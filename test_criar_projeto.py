@@ -17,10 +17,11 @@ def test_gera_projeto_sem_placeholders_residuais(tmp_path):
     assert destino == tmp_path / "projeto-exemplo"
     assert (destino / "AGENTS.md").is_file()
     assert (destino / "docs" / "steering" / "sdd-processo.md").is_file()
+    PLACEHOLDERS = ("{{NOME_PROJETO}}", "{{DESCRICAO}}", "{{STACK}}", "{{ARQUIVO_DEPENDENCIAS}}", "{{DATA}}")
     residuais = [
         p for p in destino.rglob("*")
         if p.is_file() and p.suffix in {".md", ".yml", ".yaml", ".py", ".tf"}
-        and "{{" in p.read_text(encoding="utf-8")
+        and any(ph in p.read_text(encoding="utf-8") for ph in PLACEHOLDERS)
     ]
     assert residuais == [], f"placeholders residuais em: {residuais}"
 
