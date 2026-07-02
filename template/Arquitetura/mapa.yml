@@ -13,6 +13,11 @@ modulos_tofu: infra/cloud/modules
 # dois exemplos abaixo — cada componente aponta para seu nó no diagrama, seu módulo de IaC e
 # seus serviços no docker-compose. Mantenha esta lista sincronizada na MESMA branch/PR de
 # qualquer mudança estrutural.
+#
+# NOTA DE PRIMEIRO RUN: com a lista vazia, o drift check reportará o módulo de exemplo
+# `exemplo-servico` (em infra/cloud/modules/) como "não mapeado". Isso é ESPERADO — não é
+# defeito. O aviso desaparece assim que você mapear os componentes reais do seu sistema
+# (ou remover o módulo de exemplo). O check é informativo e nunca bloqueia o CI.
 componentes: []
 
 # componentes:
