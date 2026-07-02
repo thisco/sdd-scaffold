@@ -1,0 +1,29 @@
+# Ambiente de desenvolvimento local.
+# Descomente e adapte os serviços de exemplo abaixo. A regra da Arquitetura Viva é imperativa:
+# toda dependência de infra é validada AQUI primeiro, e só então refletida no IaC de nuvem
+# (infra/cloud/) e no Arquitetura/mapa.yml, na mesma branch/PR.
+services: {}
+
+# services:
+#   app:
+#     build: ../..
+#     ports:
+#       - "8000:8000"
+#     env_file:
+#       - ../../.env
+#     depends_on:
+#       - db
+#
+#   db:
+#     image: postgres:16
+#     environment:
+#       POSTGRES_USER: app
+#       POSTGRES_PASSWORD: app_local
+#       POSTGRES_DB: app
+#     ports:
+#       - "5432:5432"
+#     volumes:
+#       - db_data:/var/lib/postgresql/data
+#
+# volumes:
+#   db_data:

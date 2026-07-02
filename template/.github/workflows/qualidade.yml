@@ -1,0 +1,49 @@
+name: Qualidade
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  drift-arquitetura:
+    name: Drift de Arquitetura (informativo)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install pyyaml
+      - name: Verificar sincronia drawio x tofu x compose
+        run: |
+          SAIDA=$(python3 scripts/verificar_drift_arquitetura.py --raiz .)
+          echo "$SAIDA"
+          if echo "$SAIDA" | grep -q "divergência"; then
+            echo "::warning title=Drift de Arquitetura::${SAIDA//$'\n'/ | }"
+          fi
+
+  segredos:
+    name: Varredura de segredos (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependencias:
+    name: Auditoria de dependências (pip-audit)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install pip-audit
+      - run: pip-audit -r {{ARQUIVO_DEPENDENCIAS}} --strict || echo "::warning title=pip-audit::vulnerabilidades encontradas — ver log do job"

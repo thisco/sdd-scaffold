@@ -1,0 +1,27 @@
+# Manifesto de correspondência da Arquitetura Viva.
+# Cada componente lógico lista seus três avatares:
+#   drawio_label     → fragmento do texto do nó no diagrama (null = decisão consciente de não desenhar)
+#   tofu_modulo      → diretório em infra/cloud/modules/
+#   compose_servicos → serviços em infra/local/docker-compose.yml (lista; ausente = sem equivalente local)
+# Verificado por scripts/verificar_drift_arquitetura.py (CI: warning informativo).
+versao: 1
+diagrama: Arquitetura/arquitetura.drawio
+compose: infra/local/docker-compose.yml
+modulos_tofu: infra/cloud/modules
+
+# Preencha `componentes` com um item por componente lógico do sistema. Descomente e adapte os
+# dois exemplos abaixo — cada componente aponta para seu nó no diagrama, seu módulo de IaC e
+# seus serviços no docker-compose. Mantenha esta lista sincronizada na MESMA branch/PR de
+# qualquer mudança estrutural.
+componentes: []
+
+# componentes:
+#   - nome: aplicacao
+#     drawio_label: "Aplicação"     # fragmento do texto do nó no diagrama
+#     tofu_modulo: app              # infra/cloud/modules/app
+#     compose_servicos: [app]       # serviço `app` no docker-compose
+#
+#   - nome: dados
+#     drawio_label: "Dados"
+#     tofu_modulo: database         # infra/cloud/modules/database
+#     compose_servicos: [db]        # serviço `db` (postgres:16) no docker-compose

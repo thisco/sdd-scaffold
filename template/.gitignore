@@ -1,0 +1,16 @@
+# Segredos e ambiente
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[codz]
+.venv/
+
+# Node / frontend
+node_modules/
+
+# Infraestrutura como código (Terraform/OpenTofu)
+*.tfstate
+*.tfstate.*
+.terraform/

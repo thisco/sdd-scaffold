@@ -1,0 +1,31 @@
+<mxfile host="app.diagrams.net" agent="sdd-scaffold" type="device">
+  <diagram id="arquitetura-esqueleto" name="Arquitetura">
+    <mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="titulo" parent="1" vertex="1" value="{{NOME_PROJETO}} — Arquitetura de Referência" style="text;html=1;align=left;verticalAlign=middle;fontSize=16;fontStyle=1;">
+          <mxGeometry x="40" y="20" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="no_entrada" parent="1" vertex="1" value="Entrada" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;">
+          <mxGeometry x="80" y="80" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="no_aplicacao" parent="1" vertex="1" value="Aplicação" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;">
+          <mxGeometry x="80" y="200" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="no_dados" parent="1" vertex="1" value="Dados" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;">
+          <mxGeometry x="80" y="320" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="no_observabilidade" parent="1" vertex="1" value="Observabilidade" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;">
+          <mxGeometry x="80" y="440" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" parent="1" edge="1" source="no_entrada" target="no_aplicacao" style="endArrow=classic;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" parent="1" edge="1" source="no_aplicacao" target="no_dados" style="endArrow=classic;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
