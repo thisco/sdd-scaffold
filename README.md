@@ -38,7 +38,7 @@ e o projeto anda em círculos. Este scaffold ataca os quatro problemas de uma ve
 
 **1. Constituição + steering, agnósticos de ferramenta.** Um único `AGENTS.md` na raiz é a fonte de
 verdade de governança, com uma tabela de roteamento que carrega o steering de domínio sob demanda
-(`docs/steering/`). Adaptadores de ferramenta (`CLAUDE.md`, `ANTIGRAVITY.md`) são stubs de uma linha
+(`docs/steering/`). Adaptadores de ferramenta (`CLAUDE.md`, `ANTIGRAVITY.md`) são stubs mínimos
 que apontam para lá. *Por quê:* a regra vive uma vez, em texto aberto — qualquer humano ou agente lê,
 e trocar de ferramenta não custa nada.
 
@@ -79,8 +79,8 @@ O que acontece:
 - roda `git init -b main` e faz o primeiro commit (`feat: estrutura inicial de meu-projeto via sdd-scaffold`);
 - imprime os próximos passos.
 
-Opções: `--descricao "..."`, `--stack "Python 3.12 + FastAPI"`, `--deps requirements.txt`. Campos não
-informados ficam como `<!-- preencher -->` para você completar depois.
+Opções: `--descricao "..."`, `--stack "Python 3.12 + FastAPI"`, `--deps requirements.txt` (default:
+`requirements.txt`). Descrição e stack não informadas ficam como `<!-- preencher -->` para completar depois.
 
 ## O que você recebe
 
