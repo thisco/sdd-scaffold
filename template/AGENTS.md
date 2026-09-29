@@ -66,10 +66,10 @@ mandar ler).
 |---|---|---|
 | Criar/alterar qualquer código | — | `docs/steering/sdd-processo.md` |
 | Mudança estrutural, infra, novo componente | skill `arquitetura-viva` | `docs/steering/arquitetura.md` |
-| Auth, upload, entrada externa, IaC, segredos | — | `docs/steering/seguranca.md` |
-| Subir/atualizar ambiente, deploy, migrations | — | `docs/steering/infra-devops.md` |
+| Auth, upload, entrada externa, IaC, segredos | skill `threat-model` | `docs/steering/seguranca.md` |
+| Subir/atualizar ambiente, deploy, migrations | skill `migrations-reversiveis` | `docs/steering/infra-devops.md` |
 | Preparar PR (testes, lint, contrato de saída) | — | `docs/steering/qualidade.md` |
-| Painel/frontend | — | `docs/steering/frontend-ux.md` |
+| Painel/frontend | skill `estados-de-interface` | `docs/steering/frontend-ux.md` |
 | Debugging | — | `docs/steering/troubleshooting.md` |
 
 As skills ficam em `skills/` e são montadas em `.claude/skills`, `.codex/skills` e

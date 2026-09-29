@@ -154,13 +154,21 @@ As skills ficam em `skills/`. Cada ferramenta lê de um caminho diferente, entã
 `.claude/skills`, `.codex/skills` e `.kiro/skills` são links para esse mesmo diretório. Editar
 a skill num lugar vale para os três, e não existe cópia para divergir.
 
-A primeira skill convertida foi `arquitetura-viva`, que carrega o ciclo, o manifesto e a
-verificação de drift. Os parâmetros que variam por projeto, como a tabela de equivalências
-local para nuvem, continuam em `docs/steering/arquitetura.md`.
+Quatro skills acompanham o scaffold, e cada uma tem um mecanismo que verifica o resultado:
 
-As demais normas continuam como steering. A conversão acontece quando uma delas provar valor
-em mais de um projeto, e não preventivamente: converter tudo de uma vez criaria skills
-competindo com as que já existem.
+| Skill | Procedimento | Verificada por |
+|---|---|---|
+| `arquitetura-viva` | ciclo, manifesto e drift entre diagrama, IaC e ambiente local | `verificar_drift_arquitetura.py` |
+| `threat-model` | as cinco perguntas, menor privilégio, tratamento de segredo | `verificar_pr.py` e gitleaks |
+| `migrations-reversiveis` | reversibilidade, rollback, expandir e contrair | `verificar_pr.py` |
+| `estados-de-interface` | os quatro estados de tela, protótipo antes do código | revisão de PR |
+
+Cada skill termina apontando o arquivo de steering que guarda os parâmetros daquele domínio, e
+traz defaults para continuar funcionando quando ele não existe.
+
+`sdd-processo.md` **não** virou skill: a [`sdd-lifecycle`](https://github.com/thisco/sdd-lifecycle)
+já conduz o ciclo, e converter criaria duas skills competindo no mesmo terreno. `infra-devops` e
+`troubleshooting` seguem como steering, porque o que resta neles é do projeto.
 
 ### Por que os ponteiros são de quatro linhas
 

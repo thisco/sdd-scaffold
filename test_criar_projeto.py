@@ -277,3 +277,51 @@ def test_superficie_sensivel_nao_dispara_dentro_de_palavra(tmp_path):
         achados = v.analisar(alterados=[real], conteudos={}, migrations_na_base=set())
         assert any("threat-model" in a.mensagem.lower() for a in achados), \
             f"{real} deveria disparar threat-model"
+
+
+def test_quatro_skills_montadas_e_com_frontmatter_valido(tmp_path):
+    """Cada skill declara nome e descrição, e a descrição diz QUANDO usar, sem
+    resumir o procedimento: descrição que resume o fluxo vira atalho que o agente
+    segue no lugar de ler a skill."""
+    destino = mod.gerar(nome="proj-4sk", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt")
+    esperadas = {"arquitetura-viva", "threat-model", "migrations-reversiveis",
+                 "estados-de-interface"}
+    presentes = {p.name for p in (destino / "skills").iterdir() if p.is_dir()}
+    assert esperadas <= presentes, f"faltam skills: {esperadas - presentes}"
+
+    for nome in esperadas:
+        texto = (destino / "skills" / nome / "SKILL.md").read_text(encoding="utf-8")
+        assert texto.startswith("---\n"), f"{nome}: sem frontmatter"
+        fm = texto.split("---")[1]
+        assert f"name: {nome}" in fm, f"{nome}: name não bate com o diretório"
+        assert "description:" in fm, f"{nome}: sem description"
+        assert len(fm) < 1024, f"{nome}: frontmatter acima do limite"
+        assert "Use quando" in fm, f"{nome}: a descrição não diz quando usar"
+        # cada skill degrada graciosamente: aponta o steering local e traz default
+        assert "docs/steering/" in texto, f"{nome}: não aponta os parâmetros do projeto"
+        assert "não existir" in texto, f"{nome}: não declara o comportamento sem o steering"
+
+        # montada nas três ferramentas
+        for ferramenta in (".claude", ".codex", ".kiro"):
+            assert (destino / ferramenta / "skills" / nome / "SKILL.md").is_file(), \
+                f"{nome} não visível em {ferramenta}"
+
+
+def test_steering_ficou_so_com_parametro_de_projeto(tmp_path):
+    """Depois da extração, o steering dos domínios convertidos não repete o
+    procedimento que agora vive na skill."""
+    destino = mod.gerar(nome="proj-st", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt")
+    st = destino / "docs" / "steering"
+    seguranca = (st / "seguranca.md").read_text(encoding="utf-8")
+    assert "threat-model" in seguranca, "steering deveria apontar a skill"
+    assert "1. Há **entrada não confiável**" not in seguranca, \
+        "as cinco perguntas ainda estão duplicadas no steering"
+    frontend = (st / "frontend-ux.md").read_text(encoding="utf-8")
+    assert "estados-de-interface" in frontend
+    assert "loading" not in frontend.lower() or "preencher" in frontend
+    infra = (st / "infra-devops.md").read_text(encoding="utf-8")
+    assert "migrations-reversiveis" in infra
+    assert "NUNCA edite migrations antigas" not in infra, \
+        "a regra de migration ainda está duplicada no steering"
