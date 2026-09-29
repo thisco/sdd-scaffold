@@ -3,6 +3,40 @@
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.6.0] - 2026-09-29
+
+Instalação da skill do ciclo na geração, e revisão de toda a documentação.
+
+### Corrigido
+
+- **O verificador de PR aprovava documento intocado.** Ele procurava as palavras
+  "threat-model" e "rollback" no texto, e os modelos em `docs/` citam essas palavras dentro de
+  comentários de orientação. Uma spec copiada do modelo e nunca preenchida passava no check.
+  Agora a verificação exige **seção com conteúdo**: encontra o título, remove comentários e
+  marcadores vazios, e confere que sobrou algo.
+- Ponteiros mortos nos modelos. `MODELO-spec.md` mandava ler o checklist de threat-model em
+  `docs/steering/seguranca.md`, de onde ele saiu na v1.5.0; `MODELO-plano.md` apontava para o
+  ciclo da Arquitetura Viva e para as regras de rollback nos mesmos lugares antigos.
+
+### Adicionado
+
+- **O gerador instala a `sdd-lifecycle`** em `skills/sdd-lifecycle/`, com a origem e a revisão
+  registradas em `PROCEDENCIA.md`. Opções `--origem-ciclo` e `--sem-skill-do-ciclo`.
+  Origem inacessível não aborta a geração: o projeto nasce sem a skill e com um arquivo
+  explicando como instalar depois.
+- `MODELO-spec.md` ganha seção própria de threat-model com as cinco perguntas, em vez de a
+  exigência viver num comentário dentro de "Riscos". Elemento obrigatório vira slot na estrutura,
+  e não lembrete em prosa.
+- `MODELO-spec.md` e `MODELO-plano.md` referenciam o PRD.
+
+### Modificado
+
+- ADR-0001 ganha apêndice registrando que a arquitetura virou quatro camadas e que dois destinos
+  da classificação original foram revertidos. O texto original fica como estava: ADR é registro
+  histórico, não documento vivo.
+- A análise em `docs/plans/` ganha nota de estado dizendo o que foi implementado e o que não
+  sobreviveu ao contato com a implementação.
+
 ## [1.5.0] - 2026-09-29
 
 Três skills novas, e a redução do steering ao que é de projeto.

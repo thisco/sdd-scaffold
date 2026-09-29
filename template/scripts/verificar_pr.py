@@ -54,6 +54,30 @@ SPEC = re.compile(r"^docs/specs/\d{4}-\d{2}-\d{2}-.+\.md$")
 # Sinais de que a evidência foi de fato colada, e não prometida.
 EVIDENCIA = re.compile(r"(passed|passou|ok\b|failed|\d+\s+test|coverage|cobertura|```)", re.I)
 
+COMENTARIO = re.compile(r"<!--.*?-->", re.S)
+RESIDUO = re.compile(r"^[\s\-*>#]*(\.\.\.|…|TODO|TBD|N/?A)?[\s\-*>#]*$", re.I)
+
+
+def secao_preenchida(texto: str, *titulos: str) -> bool:
+    """A seção existe E tem conteúdo de verdade sob o título.
+
+    Procurar a palavra no documento inteiro não serve: os modelos em docs/ citam
+    "threat-model" e "rollback" dentro de comentários de orientação, então uma spec
+    copiada do modelo e nunca preenchida passaria no teste. O que conta é haver
+    conteúdo sob o título, depois de remover comentários e marcadores vazios.
+    """
+    if not texto:
+        return False
+    alvo = "|".join(re.escape(x) for x in titulos)
+    m = re.search(rf"^#{{1,6}}\s*.*?({alvo}).*?$", texto, re.I | re.M)
+    if not m:
+        return False
+    resto = texto[m.end():]
+    proximo = re.search(r"^#{1,6}\s", resto, re.M)
+    corpo = resto[: proximo.start()] if proximo else resto
+    corpo = COMENTARIO.sub("", corpo)
+    return any(linha.strip() and not RESIDUO.match(linha) for linha in corpo.splitlines())
+
 
 @dataclass
 class Achado:
@@ -86,8 +110,12 @@ def analisar(alterados: list[str], conteudos: dict[str, str],
 
     toca_sensivel = [c for c in alterados if SENSIVEL.search(c)]
     if toca_sensivel:
-        texto_specs = " ".join(conteudos.get(s, "") for s in specs).lower()
-        if "threat-model" not in texto_specs and "threat model" not in texto_specs:
+        respondeu = any(
+            secao_preenchida(conteudos.get(s, ""), "threat-model", "threat model",
+                             "modelo de ameaça", "ameaças")
+            for s in specs
+        )
+        if not respondeu:
             achados.append(Achado(False, (
                 "a mudança toca superfície sensível (" + ", ".join(toca_sensivel[:3]) +
                 ") e nenhuma spec do PR responde ao checklist de threat-model. "
@@ -97,8 +125,11 @@ def analisar(alterados: list[str], conteudos: dict[str, str],
 
     toca_schema = [c for c in alterados if MIGRATION.search(c)]
     if toca_schema:
-        texto_planos = " ".join(conteudos.get(p, "") for p in planos).lower()
-        if "rollback" not in texto_planos and "downgrade" not in texto_planos:
+        declarou = any(
+            secao_preenchida(conteudos.get(p, ""), "rollback", "reversão", "downgrade")
+            for p in planos
+        )
+        if not declarou:
             achados.append(Achado(False, (
                 "a mudança altera schema e nenhum plano do PR declara a estratégia de rollback. "
                 "Declare antes de executar: downgrade testado, redeploy da imagem anterior ou "
@@ -113,8 +144,12 @@ def analisar(alterados: list[str], conteudos: dict[str, str],
                 "se este não for Tier 0, o plano está faltando."
             )))
         else:
-            texto_planos = " ".join(conteudos.get(p, "") for p in planos)
-            if not EVIDENCIA.search(texto_planos):
+            colou = any(
+                secao_preenchida(conteudos.get(p, ""), "evidência", "evidencias", "evidências")
+                and EVIDENCIA.search(COMENTARIO.sub("", conteudos.get(p, "")))
+                for p in planos
+            )
+            if not colou:
                 achados.append(Achado(False, (
                     "o plano não traz evidência colada de teste ou lint. Afirmação de sucesso "
                     "sem saída de execução não encerra a tarefa."

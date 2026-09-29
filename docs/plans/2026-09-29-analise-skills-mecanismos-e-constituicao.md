@@ -1,5 +1,10 @@
 # Análise: skills, mecanismos de enforcement e onde moram as premissas gerais
 
+> **Estado em 2026-09-29, fim do dia:** implementada. A camada 0 saiu na v1.3.0, os mecanismos
+> de PR na v1.4.0 e as três skills na v1.5.0. Duas recomendações não sobreviveram ao contato com
+> a implementação, e o apêndice do ADR-0001 registra quais e por quê. O texto abaixo fica como
+> foi escrito, para que a diferença entre o previsto e o feito continue legível.
+
 Data: 2026-09-29 · Insumo: pesquisa de internos de cinco harnesses
 (`serpro-cloud-ia-governance/docs/research/harness-internals/`) e leitura integral dos sete
 arquivos de steering do template.
