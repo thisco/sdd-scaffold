@@ -99,6 +99,22 @@ jobs:
           fi
           exit $FALHOU
 
+  normas-do-pr:
+    name: Normas do PR (threat-model, rollback, evidência, migrations)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # Bloqueia apenas alteração de migration já aplicada, que é inequívoca.
+      # Threat-model, rollback e evidência saem como aviso: envolvem julgamento,
+      # e portão que reprova por julgamento ensina o time a contorná-lo.
+      - name: Verificar normas contra a base do PR
+        run: python3 scripts/verificar_pr.py --base origin/${{ github.base_ref }}
+
   segredos:
     name: Varredura de segredos (gitleaks)
     runs-on: ubuntu-latest

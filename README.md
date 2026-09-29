@@ -76,6 +76,16 @@ as ADRs nem o mapa de arquitetura por conta própria.
 | Claude Code | hook antes da escrita | `scripts/proteger_governanca.py` e `.claude/settings.json` |
 | Kiro | regra declarativa, `deny` sobre `ask` sobre `allow` | `.kiro/permissions.yaml` |
 | Codex | fixa `git_attribution` desligado, protegendo o princípio de não citar marca de IA | `.codex/requirements.toml` |
+| CI | verifica as normas contra o diff do PR | `scripts/verificar_pr.py` |
+
+O verificador de PR confere o que o processo pedia e ninguém checava: spec com threat-model
+quando a mudança toca superfície sensível, plano com estratégia de rollback quando mexe em
+schema, evidência de teste colada no plano, e migration já aplicada não sendo editada.
+
+Só o último **bloqueia**. Editar uma migration que já rodou corrompe o histórico de schema de
+quem aplicou a anterior, é inequívoco e difícil de desfazer. Os outros três **avisam**, porque
+envolvem julgamento sobre o que é suficiente, e um portão que reprova por julgamento ensina o
+time a contorná-lo.
 
 Saber em qual das duas camadas cada regra está é o que separa governança de intenção.
 
@@ -230,6 +240,7 @@ meu-projeto/
 ├── scripts/
 │   ├── verificar_drift_arquitetura.py   # compara mapa.yml × drawio × tofu × compose
 │   ├── verificar_constituicao.py        # bloco inline × cópia canônica
+│   ├── verificar_pr.py                  # normas do PR contra o diff
 │   └── proteger_governanca.py           # hook PreToolUse
 ├── tests/
 │   ├── unidade/ · integracao/ · e2e/    # camadas da suíte
