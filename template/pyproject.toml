@@ -1,0 +1,24 @@
+# Configuração de ferramentas de {{NOME_PROJETO}}.
+# Stack: {{STACK}}
+
+[tool.pytest.ini_options]
+# Sem isto, `pytest tests/` falha com ModuleNotFoundError em layout src/,
+# e o job de testes do CI quebra mesmo com a suíte correta.
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+    "integracao: toca banco ou recurso externo efêmero (nunca o de desenvolvimento)",
+    "e2e: exercita o fluxo completo pela borda externa",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_ignores = true
+# <!-- preencher: ative `strict = true` quando a base estiver tipada, e ajuste
+#      python_version à versão real do projeto. -->

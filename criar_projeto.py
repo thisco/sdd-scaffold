@@ -15,6 +15,11 @@ from pathlib import Path
 
 TEMPLATE = Path(__file__).resolve().parent / "template"
 EXTENSOES_TEXTO = {".md", ".yml", ".yaml", ".py", ".tf", ".gitignore", ".drawio", ""}
+# Artefatos de SO/cache nunca devem chegar ao projeto gerado. Atenção: `.DS_Store` tem
+# suffix "" (nome só com ponto inicial), e "" está em EXTENSOES_TEXTO de propósito, para
+# pegar arquivos de texto sem extensão. Sem este filtro o gerador tenta decodificar o
+# binário como UTF-8 e estoura — ver test_nao_copia_artefatos_de_so_nem_cache.
+IGNORAR = shutil.ignore_patterns(".DS_Store", "__pycache__", "*.pyc", ".pytest_cache")
 
 
 def gerar(nome: str, destino: Path | str, descricao: str, stack: str, deps: str) -> Path:
@@ -23,7 +28,7 @@ def gerar(nome: str, destino: Path | str, descricao: str, stack: str, deps: str)
     if alvo.exists():
         raise FileExistsError(f"destino já existe: {alvo}")
 
-    shutil.copytree(TEMPLATE, alvo)
+    shutil.copytree(TEMPLATE, alvo, ignore=IGNORAR)
 
     trocas = {
         "{{NOME_PROJETO}}": nome,
@@ -35,7 +40,10 @@ def gerar(nome: str, destino: Path | str, descricao: str, stack: str, deps: str)
     for arquivo in alvo.rglob("*"):
         if not arquivo.is_file() or arquivo.suffix not in EXTENSOES_TEXTO:
             continue
-        texto = arquivo.read_text(encoding="utf-8")
+        try:
+            texto = arquivo.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue  # binário com extensão de texto: nada a substituir
         for chave, valor in trocas.items():
             texto = texto.replace(chave, valor)
         arquivo.write_text(texto, encoding="utf-8")
