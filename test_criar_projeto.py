@@ -325,3 +325,85 @@ def test_steering_ficou_so_com_parametro_de_projeto(tmp_path):
     assert "migrations-reversiveis" in infra
     assert "NUNCA edite migrations antigas" not in infra, \
         "a regra de migration ainda está duplicada no steering"
+
+
+def test_secao_apenas_mencionada_nao_conta_como_preenchida(tmp_path):
+    """Defeito encontrado ao revisar os modelos: o MODELO-spec cita 'threat-model'
+    num comentário de orientação, e o MODELO-plano traz a seção de rollback vazia.
+    Buscar a palavra fazia o verificador aprovar um documento intocado."""
+    v = _verificador_pr(mod.gerar(nome="p5", destino=tmp_path, descricao="d", stack="s",
+                                  deps="requirements.txt"))
+
+    spec_do_modelo = (
+        "# Spec\n\n## Riscos e mitigações\n\n"
+        "<!-- Para specs que tocam auth, responder ao checklist de threat-model\n"
+        "     (skills/threat-model) com um parágrafo por sim. -->\n\n- ...\n"
+    )
+    achados = v.analisar(alterados=["src/auth/x.py", "docs/specs/2026-01-01-x.md"],
+                         conteudos={"docs/specs/2026-01-01-x.md": spec_do_modelo},
+                         migrations_na_base=set())
+    assert any("threat-model" in a.mensagem.lower() for a in achados), \
+        "spec copiada do modelo e não preenchida deveria ser sinalizada"
+
+    spec_respondida = (
+        "# Spec\n\n## Threat-model\n\n"
+        "1. Entrada não confiável? Sim. O payload é validado contra schema na borda.\n"
+        "2. Auth alterada? Não.\n"
+    )
+    ok = v.analisar(alterados=["src/auth/x.py", "docs/specs/2026-01-01-x.md"],
+                    conteudos={"docs/specs/2026-01-01-x.md": spec_respondida},
+                    migrations_na_base=set())
+    assert not any("threat-model" in a.mensagem.lower() for a in ok)
+
+    plano_vazio = "# Plano\n\n## Estratégia de rollback\n\n<!-- Obrigatória se há schema. -->\n"
+    achados2 = v.analisar(alterados=["migrations/0009_x.py", "docs/plans/2026-01-01-x.md"],
+                          conteudos={"docs/plans/2026-01-01-x.md": plano_vazio},
+                          migrations_na_base=set())
+    assert any("rollback" in a.mensagem.lower() for a in achados2), \
+        "seção de rollback vazia deveria ser sinalizada"
+
+
+def test_instala_skill_externa_a_partir_de_origem_local(tmp_path):
+    """A sdd-lifecycle vive em repositório próprio e é instalada na geração."""
+    import subprocess as _sp
+    origem = tmp_path / "origem-skill"
+    (origem / "docs").mkdir(parents=True)
+    (origem / "SKILL.md").write_text("---\nname: sdd-lifecycle\ndescription: x\n---\n# Ciclo\n",
+                                     encoding="utf-8")
+    (origem / "docs" / "exemplo.md").write_text("exemplo", encoding="utf-8")
+    for cmd in (["git", "init", "-q", "-b", "main"], ["git", "add", "-A"],
+                ["git", "-c", "user.name=t", "-c", "user.email=t@e.com",
+                 "commit", "-q", "-m", "inicial"]):
+        _sp.run(cmd, cwd=origem, check=True, capture_output=True)
+
+    destino = mod.gerar(nome="proj-skill-ext", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=str(origem))
+    instalada = destino / "skills" / "sdd-lifecycle" / "SKILL.md"
+    assert instalada.is_file(), "sdd-lifecycle não foi instalada"
+    assert "name: sdd-lifecycle" in instalada.read_text(encoding="utf-8")
+    proc = destino / "skills" / "sdd-lifecycle" / "PROCEDENCIA.md"
+    assert proc.is_file(), "sem registro de procedência"
+    assert str(origem) in proc.read_text(encoding="utf-8")
+    # visível nas três ferramentas pelo mesmo ponto de montagem
+    for f in (".claude", ".codex", ".kiro"):
+        assert (destino / f / "skills" / "sdd-lifecycle" / "SKILL.md").is_file()
+
+
+def test_geracao_nao_falha_quando_a_origem_esta_inacessivel(tmp_path):
+    """Sem rede, o projeto continua nascendo: a skill externa é um acréscimo, e
+    um gerador que quebra por rede indisponível falha no pior momento."""
+    destino = mod.gerar(nome="proj-sem-rede", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt",
+                        origem_ciclo="https://example.invalid/nao-existe.git")
+    assert (destino / "AGENTS.md").is_file(), "a geração deveria ter concluído"
+    assert not (destino / "skills" / "sdd-lifecycle").exists()
+    aviso = destino / "skills" / "SKILL-CICLO-AUSENTE.md"
+    assert aviso.is_file(), "sem instrução de como instalar depois"
+    assert "sdd-lifecycle" in aviso.read_text(encoding="utf-8")
+
+
+def test_pode_dispensar_a_skill_externa(tmp_path):
+    destino = mod.gerar(nome="proj-sem-skill", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    assert not (destino / "skills" / "sdd-lifecycle").exists()
+    assert not (destino / "skills" / "SKILL-CICLO-AUSENTE.md").exists()

@@ -1,7 +1,7 @@
 # Plano: <título da mudança>
 
 > **Tier:** 1 | 2
-> **Spec relacionada:** `docs/specs/YYYY-MM-DD-nome.md` (obrigatória em Tier 2)
+> **Spec relacionada:** `docs/specs/AAAA-MM-DD-nome.md` (obrigatória em Tier 2)
 > **Branch:** `feat|fix/YYYY-MM-DD-nome`
 > **Data:** YYYY-MM-DD
 
@@ -28,12 +28,16 @@
 - [ ] Algum módulo de IaC (`infra/cloud/modules/`) foi criado ou alterado?
 - [ ] O diagrama `.drawio` e o `Arquitetura/mapa.yml` foram atualizados?
 
-<!-- Se qualquer resposta for "sim": aplicar o ciclo completo da Arquitetura Viva e a tabela de
-     equivalências local→cloud (docs/steering/arquitetura.md). -->
+<!-- Se qualquer resposta for "sim": aplicar o ciclo da skill `arquitetura-viva` e a tabela de
+     equivalências local para nuvem, que está em docs/steering/arquitetura.md. -->
 
 ## Estratégia de rollback
 
-<!-- Obrigatória se há mudança de schema ou de deploy (docs/steering/infra-devops.md). -->
+<!-- OBRIGATÓRIA quando há mudança de schema ou de deploy. Procedimento na skill
+     `migrations-reversiveis`; os caminhos concretos deste projeto (workflow de redeploy,
+     onde ficam os backups, tempo de restauração) estão em docs/steering/infra-devops.md.
+     Declarar a estratégia às vezes revela que ela não existe, e descobrir isso aqui é
+     barato. Seção vazia não conta: o verificador de PR checa se há conteúdo. -->
 
 ## Tarefas
 
@@ -43,7 +47,9 @@
 
 ## Evidências
 
-<!-- Saída real dos comandos de validação. Nenhuma tarefa fecha sem esta seção preenchida. -->
+<!-- Saída real dos comandos de validação, colada em bloco de código. Nenhuma tarefa fecha sem
+     esta seção preenchida, e o verificador de PR confere que há conteúdo, não apenas o título.
+     Correção de bug leva as DUAS execuções: a que falha antes e a que passa depois. -->
 
 ## Revisão adversarial: <data> — achados
 

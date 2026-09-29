@@ -164,3 +164,34 @@ justifica pressa nem quebra de compatibilidade apressada.
 código-fonte mora, então `pytest tests/` falhava com `ModuleNotFoundError` e só passava com
 `PYTHONPATH=.` na frente. O job de testes do CI do template chama `pytest` direto e teria
 quebrado. Corrigido com `template/pyproject.toml` e teste de regressão.
+
+
+---
+
+## Revisão da classificação (2026-09-29, depois da implementação)
+
+Esta ADR registrou três camadas e uma tabela de destino por arquivo. A implementação mudou os
+dois, e o registro original fica acima como estava, porque ADR é histórico e não documento vivo.
+
+**Uma quarta camada apareceu.** As três camadas descritas acima tratam todas de um projeto.
+Premissas que valem para todos os projetos da organização não tinham lugar, e por isso estavam
+copiadas dentro do `AGENTS.md` de cada um, sem versão. Isso virou a camada 0, materializada
+inline no `AGENTS.md` entre marcadores, com cópia canônica em `docs/constituicao/` e verificação
+por CI. Inline em vez de include remoto porque premissa precisa valer em todo turno, e porque
+include só é implementado por uma das três ferramentas.
+
+**Dois destinos foram revertidos.**
+
+| Arquivo | Destino registrado acima | Destino real | Por quê |
+|---|---|---|---|
+| `sdd-processo.md` | vira skill | permanece steering | A `sdd-lifecycle` já cobre todos os tópicos, e com mais profundidade. Converter criaria duas skills competindo no mesmo terreno |
+| `troubleshooting.md` | vira skill | permanece steering | Dezesseis linhas, e o protocolo de depuração já existe como skill madura em ecossistemas de terceiros |
+
+**Três skills foram criadas**, e cada uma entrou depois do mecanismo que a verifica:
+`arquitetura-viva`, `threat-model`, `migrations-reversiveis` e `estados-de-interface`.
+
+**A redução do steering ficou abaixo do previsto.** A estimativa era cerca de 121 linhas; o real
+foi 280, partindo de 335. A diferença inteira é `sdd-processo.md`, que permanece com 85 linhas
+enquanto a `sdd-lifecycle` não acompanhar o projeto gerado. Isso foi resolvido depois, com o
+gerador instalando a skill a partir do repositório dela, o que abre caminho para a redução na
+próxima revisão deste arquivo.

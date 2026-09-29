@@ -11,9 +11,15 @@ import argparse
 import datetime as dt
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 TEMPLATE = Path(__file__).resolve().parent / "template"
+
+# A skill que conduz o ciclo SDD vive em repositório próprio e é instalada na geração,
+# em vez de ser copiada para dentro deste template. Assim existe uma fonte só, e o
+# projeto recebe a versão vigente no dia em que nasce, com a origem registrada.
+ORIGEM_CICLO_PADRAO = "https://github.com/thisco/sdd-lifecycle.git"
 EXTENSOES_TEXTO = {".md", ".yml", ".yaml", ".py", ".tf", ".gitignore", ".drawio", ""}
 # Artefatos de SO/cache nunca devem chegar ao projeto gerado. Atenção: `.DS_Store` tem
 # suffix "" (nome só com ponto inicial), e "" está em EXTENSOES_TEXTO de propósito, para
@@ -22,7 +28,58 @@ EXTENSOES_TEXTO = {".md", ".yml", ".yaml", ".py", ".tf", ".gitignore", ".drawio"
 IGNORAR = shutil.ignore_patterns(".DS_Store", "__pycache__", "*.pyc", ".pytest_cache")
 
 
-def gerar(nome: str, destino: Path | str, descricao: str, stack: str, deps: str) -> Path:
+def instalar_skill_do_ciclo(alvo: Path, origem: str) -> bool:
+    """Instala a skill do ciclo SDD em skills/sdd-lifecycle/.
+
+    Devolve True se instalou. Falha de rede ou origem inacessível **não** aborta a
+    geração: o projeto nasce sem a skill e com um arquivo explicando como instalar
+    depois. Um gerador que quebra porque a rede caiu falha justamente quando alguém
+    está começando um projeto.
+    """
+    destino_skill = alvo / "skills" / "sdd-lifecycle"
+    with tempfile.TemporaryDirectory() as tmp:
+        clone = Path(tmp) / "ciclo"
+        r = subprocess.run(
+            ["git", "clone", "--depth", "1", "--quiet", origem, str(clone)],
+            capture_output=True, text=True,
+        )
+        if r.returncode != 0 or not (clone / "SKILL.md").is_file():
+            (alvo / "skills" / "SKILL-CICLO-AUSENTE.md").write_text(
+                "# A skill do ciclo SDD não foi instalada\n\n"
+                f"Origem tentada: `{origem}`\n\n"
+                "A geração seguiu sem ela, porque a skill é um acréscimo e não um\n"
+                "pré-requisito. Para instalar depois:\n\n"
+                "```bash\n"
+                f"git clone --depth 1 {origem} /tmp/sdd-lifecycle\n"
+                "cp -R /tmp/sdd-lifecycle skills/sdd-lifecycle\n"
+                "rm -rf skills/sdd-lifecycle/.git\n"
+                "```\n\n"
+                "Ela fica visível nas três ferramentas pelo mesmo ponto de montagem,\n"
+                "porque `.claude/skills`, `.codex/skills` e `.kiro/skills` apontam\n"
+                "para `skills/`. Apague este arquivo depois de instalar.\n",
+                encoding="utf-8")
+            return False
+
+        revisao = subprocess.run(["git", "-C", str(clone), "rev-parse", "--short", "HEAD"],
+                                 capture_output=True, text=True).stdout.strip()
+        shutil.copytree(clone, destino_skill,
+                        ignore=shutil.ignore_patterns(".git", ".github", ".DS_Store",
+                                                      "__pycache__", "*.pyc"))
+        (destino_skill / "PROCEDENCIA.md").write_text(
+            "# Procedência desta skill\n\n"
+            f"- **Origem:** `{origem}`\n"
+            f"- **Revisão instalada:** `{revisao or 'desconhecida'}`\n"
+            f"- **Instalada em:** {dt.date.today().isoformat()}\n\n"
+            "Esta skill não nasceu aqui: ela foi instalada na geração do projeto a partir\n"
+            "do repositório acima. Editar o conteúdo aqui cria uma bifurcação silenciosa.\n"
+            "Se a mudança serve para outros projetos, mande PR para a origem. Se serve só\n"
+            "para este, crie uma skill local com outro nome e registre o motivo.\n",
+            encoding="utf-8")
+    return True
+
+
+def gerar(nome: str, destino: Path | str, descricao: str, stack: str, deps: str,
+          origem_ciclo: str | None = ORIGEM_CICLO_PADRAO) -> Path:
     destino = Path(destino).expanduser().resolve()
     alvo = destino / nome
     if alvo.exists():
@@ -53,6 +110,9 @@ def gerar(nome: str, destino: Path | str, descricao: str, stack: str, deps: str)
             texto = texto.replace(chave, valor)
         arquivo.write_text(texto, encoding="utf-8")
 
+    if origem_ciclo:
+        instalar_skill_do_ciclo(alvo, origem_ciclo)
+
     subprocess.run(["git", "init", "-b", "main"], cwd=alvo, check=True, capture_output=True)
     subprocess.run(["git", "add", "-A"], cwd=alvo, check=True, capture_output=True)
     subprocess.run(
@@ -69,9 +129,14 @@ def main() -> int:
     parser.add_argument("--descricao", default="<!-- preencher: descrição do projeto -->")
     parser.add_argument("--stack", default="<!-- preencher: linguagem e frameworks -->")
     parser.add_argument("--deps", default="requirements.txt")
+    parser.add_argument("--origem-ciclo", default=ORIGEM_CICLO_PADRAO,
+                        help="repositório ou caminho da skill do ciclo SDD")
+    parser.add_argument("--sem-skill-do-ciclo", action="store_true",
+                        help="não instalar a skill do ciclo SDD")
     args = parser.parse_args()
 
-    alvo = gerar(args.nome, args.destino, args.descricao, args.stack, args.deps)
+    alvo = gerar(args.nome, args.destino, args.descricao, args.stack, args.deps,
+                 origem_ciclo=None if args.sem_skill_do_ciclo else args.origem_ciclo)
     print(f"✔ Projeto criado em {alvo}")
     print("Próximos passos: revisar AGENTS.md, preencher docs/steering/, desenhar Arquitetura/arquitetura.drawio")
     return 0

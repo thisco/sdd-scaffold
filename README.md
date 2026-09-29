@@ -205,8 +205,26 @@ O que acontece:
 - roda `git init -b main` e faz o primeiro commit (`feat: estrutura inicial de meu-projeto via sdd-scaffold`);
 - imprime os próximos passos.
 
+- instala a skill do ciclo SDD a partir do repositório dela.
+
 Opções: `--descricao "..."`, `--stack "Python 3.12 + FastAPI"`, `--deps requirements.txt` (default:
 `requirements.txt`). Descrição e stack não informadas ficam como `<!-- preencher -->` para completar depois.
+
+### A skill do ciclo é instalada, não copiada
+
+A [`sdd-lifecycle`](https://github.com/thisco/sdd-lifecycle) conduz o ciclo SDD e vive em
+repositório próprio. O gerador a instala em `skills/sdd-lifecycle/` e registra a origem e a
+revisão em `PROCEDENCIA.md`, de modo que exista uma fonte só e o projeto receba a versão vigente
+no dia em que nasce.
+
+```bash
+--origem-ciclo <url ou caminho>   # outra origem, inclusive um diretório local
+--sem-skill-do-ciclo              # não instalar
+```
+
+Se a origem estiver inacessível, **a geração continua**. O projeto nasce sem a skill e com um
+arquivo `skills/SKILL-CICLO-AUSENTE.md` explicando como instalar depois. Um gerador que aborta
+porque a rede caiu falha justamente quando alguém está começando um projeto.
 
 ## O que você recebe
 
@@ -223,7 +241,7 @@ meu-projeto/
 ├── docs/
 │   ├── constituicao/padrao-v1.0.md # camada 0: cópia canônica, inline no AGENTS.md
 │   ├── PROJECT_MEMORY.md           # memória quente (~1 página), lida a cada sessão
-│   ├── steering/                   # parâmetros de domínio deste projeto (7 arquivos):
+│   ├── steering/                   # parâmetros deste projeto (7 arquivos):
 │   │   ├── sdd-processo.md          #   tiers, planos, checkpoints, git
 │   │   ├── arquitetura.md           #   estrutura, decisões-chave, equivalências local para nuvem
 │   │   ├── seguranca.md             #   segredos, auth/RBAC, threat-model
@@ -239,8 +257,12 @@ meu-projeto/
 ├── infra/
 │   ├── local/docker-compose.yml    # ambiente local (esqueleto)
 │   └── cloud/                       # OpenTofu: main.tf, versions.tf, modules/exemplo-servico/
-├── skills/
-│   └── arquitetura-viva/SKILL.md        # procedimento compartilhável (corpo único)
+├── skills/                              # corpo único, montado nas três ferramentas
+│   ├── arquitetura-viva/SKILL.md
+│   ├── threat-model/SKILL.md
+│   ├── migrations-reversiveis/SKILL.md
+│   ├── estados-de-interface/SKILL.md
+│   └── sdd-lifecycle/                   # instalada na geração, com PROCEDENCIA.md
 ├── .claude/skills · .codex/skills · .kiro/skills   # pontos de montagem para skills/
 ├── .claude/settings.json                # hook que protege a governança
 ├── .codex/requirements.toml             # fixa git_attribution desligado
