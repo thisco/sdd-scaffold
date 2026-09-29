@@ -1,0 +1,10 @@
+# Requisitos de workspace para o Codex CLI.
+#
+# O princípio 2 da constituição em AGENTS.md proíbe que qualquer artefato do repositório
+# mencione marca de assistente de IA. O Codex tem um mecanismo de atribuição automática que,
+# quando ligado, injeta uma instrução exigindo rodapé de atribuição em todo commit e PR.
+# Essa chave é de workspace ou organização e não é consultada a partir do AGENTS.md, então
+# uma política externa ligaria a atribuição sem que o repositório pudesse impedir.
+#
+# Fixar aqui mantém o princípio 2 válido mesmo sob política externa.
+git_attribution = false

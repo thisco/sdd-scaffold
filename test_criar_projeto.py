@@ -96,3 +96,48 @@ def test_suite_do_projeto_gerado_roda_sem_pythonpath_manual(tmp_path):
     conteudo = pyproject.read_text(encoding="utf-8")
     assert "[tool.pytest.ini_options]" in conteudo, "sem configuração de pytest"
     assert "pythonpath" in conteudo, "pytest não sabe onde o código-fonte mora"
+
+
+def test_skills_montadas_para_as_tres_ferramentas(tmp_path):
+    """Um corpo de skill, N pontos de montagem. Claude Code lê .claude/skills,
+    Codex lê .codex/skills e Kiro lê .kiro/skills; os três apontam para o mesmo
+    diretório para que não existam três cópias divergindo."""
+    destino = mod.gerar(nome="proj-skills", destino=tmp_path, descricao="d",
+                        stack="s", deps="requirements.txt")
+    canonico = destino / "skills" / "arquitetura-viva" / "SKILL.md"
+    assert canonico.is_file(), "skill canônica ausente"
+    for ferramenta in (".claude", ".codex", ".kiro"):
+        pasta = destino / ferramenta / "skills"
+        assert pasta.is_symlink(), (
+            f"{ferramenta}/skills virou cópia, não ponto de montagem. Copiar significa que "
+            "editar a skill em um lugar deixa os outros dois desatualizados em silêncio, "
+            "que é exatamente o problema que o corpo único existe para evitar."
+        )
+        montagem = pasta / "arquitetura-viva" / "SKILL.md"
+        assert montagem.is_file(), f"{ferramenta}/skills não resolve para a skill"
+
+
+def test_hook_protege_governanca_e_libera_codigo(tmp_path):
+    """A mesma regra que o Kiro faz por permissions.yaml e o Codex por sandbox:
+    o agente escreve código, não reescreve a constituição por conta própria."""
+    import json as _json
+    import subprocess as _sp
+    destino = mod.gerar(nome="proj-hook", destino=tmp_path, descricao="d",
+                        stack="s", deps="requirements.txt")
+    script = destino / "scripts" / "proteger_governanca.py"
+    assert script.is_file(), "hook ausente no projeto gerado"
+    assert (destino / ".claude" / "settings.json").is_file(), "hook não registrado"
+
+    def decidir(caminho):
+        evento = _json.dumps({"tool_name": "Edit", "tool_input": {"file_path": caminho}})
+        saida = _sp.run(["python3", str(script)], input=evento, capture_output=True,
+                        text=True, check=True).stdout.strip()
+        return _json.loads(saida)["hookSpecificOutput"]["permissionDecision"] if saida else None
+
+    for protegido in ("AGENTS.md", "CLAUDE.md", "GEMINI.md", "docs/adr/0001-x.md",
+                      "Arquitetura/mapa.yml", ".github/workflows/qualidade.yml"):
+        assert decidir(protegido) == "ask", f"{protegido} deveria exigir aprovação"
+
+    for livre in ("src/app.py", "tests/unidade/test_app.py", "docs/specs/2026-01-01-x.md",
+                  "docs/plans/2026-01-01-x.md", "README.md"):
+        assert decidir(livre) is None, f"{livre} não deveria ser bloqueado"
