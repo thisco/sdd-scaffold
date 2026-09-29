@@ -16,6 +16,11 @@ rules:
     match: ["AGENTS.md", "CLAUDE.md", "GEMINI.md"]
     effect: ask
 
+  # A constituição vale para todos os projetos e não se edita a partir de um deles.
+  - capability: fs.write
+    match: ["docs/constituicao/**"]
+    effect: deny
+
   - capability: fs.write
     match: ["docs/adr/**"]
     effect: ask

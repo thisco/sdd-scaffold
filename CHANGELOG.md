@@ -3,6 +3,32 @@
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.3.0] - 2026-09-29
+
+Camada 0: constituição organizacional.
+
+### Adicionado
+
+- **`docs/constituicao/padrao-v1.0.md`** e o bloco correspondente inline no `AGENTS.md`, entre
+  marcadores. Os princípios que valem para todos os projetos deixam de ser texto solto dentro de
+  cada `AGENTS.md` e passam a ter versão declarada.
+- **`scripts/verificar_constituicao.py`** e o job `governanca` do CI. Editar a constituição
+  dentro de um projeto reprova, porque ela é compartilhada. Estar atrás da versão publicada pela
+  organização apenas avisa, porque um projeto pode ter motivo para esperar.
+- O hook e o `permissions.yaml` passam a cobrir `docs/constituicao/`.
+
+### Por que inline em vez de include
+
+Premissa precisa valer em todo turno, então não pode virar arquivo lido sob demanda. Include
+remoto foi descartado porque só uma das três ferramentas implementa, e depender disso
+reintroduziria o lock-in que o scaffold existe para evitar. A escolha foi vendoring com
+verificação: o texto vive inline e o CI confere que não divergiu.
+
+### Modificado
+
+- `AGENTS.md` reorganizado em quatro camadas. A seção do projeto ficou com stack e estado; o
+  resto é constituição compartilhada ou roteamento.
+
 ## [1.2.0] - 2026-09-29
 
 Onda 2: primeira skill compartilhável, pontos de montagem por ferramenta e três mecanismos

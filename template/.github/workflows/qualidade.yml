@@ -80,6 +80,10 @@ jobs:
             echo "::error title=AGENTS.md grande demais::$TAMANHO bytes — mova detalhe operacional para docs/steering/"
             exit 1
           fi
+      # A constituição é compartilhada entre projetos e não se edita por projeto. O bloco
+      # inline no AGENTS.md precisa bater com a cópia canônica em docs/constituicao/.
+      - name: Constituição não adulterada
+        run: python3 scripts/verificar_constituicao.py --raiz .
       # AGENTS.md é a fonte única; os ponteiros de ferramenta precisam apontar para ele.
       - name: Ponteiros de ferramenta íntegros
         run: |

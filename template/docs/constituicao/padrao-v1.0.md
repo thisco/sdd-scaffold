@@ -1,17 +1,3 @@
-# AGENTS.md, constituição do repositório {{NOME_PROJETO}}
-
-Regras para desenvolvedores e assistentes de IA pareando neste repositório. Este arquivo é a
-**única fonte de verdade de governança** e é lido em todo turno, então mantenha-o curto. O
-detalhe operacional mora em `docs/steering/` e nas skills em `skills/`, carregados sob demanda.
-
-Paradigma: **Spec-Driven Development (SDD)**.
-
-## Este projeto
-
-- **Stack:** {{STACK}}
-- **Estado:** {{DESCRICAO}}
-
-<!-- constituicao:inicio padrao-v1.0 -->
 ## Princípios inegociáveis
 
 Estes princípios valem para todos os projetos que adotam este scaffold. Eles são a camada 0 da
@@ -48,41 +34,3 @@ carregados em todo turno, com a cópia canônica versionada em `docs/constituica
 3. Implementar com TDD, colando evidência de teste e lint no plano antes de concluir.
 4. Atualizar `CHANGELOG.md` no formato Keep a Changelog antes do merge.
 5. PR com a suíte passando. Tier 2 passa por revisão adversarial contra a spec.
-<!-- constituicao:fim -->
-
-> O bloco acima é a **camada 0**: vale para todos os projetos da organização e não se edita por
-> projeto. A cópia canônica está em `docs/constituicao/padrao-v1.0.md` e
-> `scripts/verificar_constituicao.py` confere que as duas batem. Para adotar uma versão nova,
-> substitua o arquivo canônico e reinline o bloco.
-
-## Tabela de roteamento
-
-Governança tem quatro camadas, separadas por **quando o conteúdo entra no contexto**:
-constituição da organização (o bloco acima, sempre), premissa deste projeto (esta seção, sempre),
-procedimento (skills em `skills/`, por gatilho) e parâmetro (`docs/steering/`, quando a skill
-mandar ler).
-
-| Se a tarefa envolve… | Procedimento | Parâmetros deste projeto |
-|---|---|---|
-| Criar/alterar qualquer código | — | `docs/steering/sdd-processo.md` |
-| Mudança estrutural, infra, novo componente | skill `arquitetura-viva` | `docs/steering/arquitetura.md` |
-| Auth, upload, entrada externa, IaC, segredos | — | `docs/steering/seguranca.md` |
-| Subir/atualizar ambiente, deploy, migrations | — | `docs/steering/infra-devops.md` |
-| Preparar PR (testes, lint, contrato de saída) | — | `docs/steering/qualidade.md` |
-| Painel/frontend | — | `docs/steering/frontend-ux.md` |
-| Debugging | — | `docs/steering/troubleshooting.md` |
-
-As skills ficam em `skills/` e são montadas em `.claude/skills`, `.codex/skills` e
-`.kiro/skills`. Os três apontam para o mesmo corpo, então editar num lugar vale para todos.
-
-## Mapa do repositório
-
-```
-src/           código-fonte da aplicação (módulos/pacotes do domínio)
-infra/         local/ (docker-compose) · cloud/ (IaC multi-ambiente)
-docs/          constituicao/ · prd/ · specs/ · plans/ · adr/ · release-notes/ · steering/ · PROJECT_MEMORY.md
-Arquitetura/   diagrama .drawio + mapa.yml (manifesto de correspondência)
-skills/        procedimento compartilhável, montado em .claude/ .codex/ .kiro/
-scripts/       utilitários (drift de arquitetura, proteção e verificação da governança)
-tests/         suíte automatizada (unidade, integração, e2e)
-```
