@@ -62,6 +62,48 @@ Tier 2 passa por revisão adversarial *contra a spec* (não contra o diff); spec
 externa respondem a um checklist de threat-model. *Por quê:* "confie em mim, funciona" não é evidência,
 e um revisor que parte da spec pega o requisito que foi silenciosamente esquecido.
 
+## As três camadas de governança
+
+Governança aqui é classificada por **quando o conteúdo entra no contexto do agente** — não por
+assunto. É o que permite compartilhar procedimento entre projetos sem vazar detalhe de um projeto
+para outro.
+
+| Camada | Onde mora | Quando entra | Conteúdo |
+|---|---|---|---|
+| **1 · Premissa** | `AGENTS.md` + ponteiros `CLAUDE.md`, `GEMINI.md` | **Sempre** | Stack, idioma, princípios inegociáveis, mapa do repo, tabela de roteamento |
+| **2 · Procedimento** | `SKILL.md` compartilhável | **Sob demanda**, por gatilho | Como classificar tier, conduzir TDD, preparar PR, depurar |
+| **3 · Parâmetro** | `docs/steering/*.md` curtos | **Quando a skill instrui a ler** | Comandos reais, variáveis, convenções, contratos de saída |
+
+O critério decisivo: **premissa não pode morar em skill**, porque skill é revelada
+condicionalmente e premissa precisa valer em todo turno. Por isso a camada 1 é sempre carregada e
+precisa ficar pequena — o Codex trunca documentos de projeto em 32.768 bytes, **sem avisar**.
+
+Uma skill nunca contém conteúdo de projeto: ela termina mandando ler o steering local e traz
+defaults para funcionar sem ele. Procedimento específico de um projeto vira **skill local**, não
+promovida ao repositório compartilhado; se provar valor em dois projetos, sobe por PR.
+
+Decisão completa, alternativas descartadas e riscos em
+[`docs/adr/0001-separacao-entre-premissa-procedimento-e-parametro.md`](docs/adr/0001-separacao-entre-premissa-procedimento-e-parametro.md).
+A camada 1 e a 3 já existem; a camada 2 é a Onda 2 do plano de melhoria.
+
+### Por que os ponteiros são de quatro linhas
+
+`AGENTS.md` é a fonte única. `CLAUDE.md` e `GEMINI.md` só apontam para ele, porque duas cópias da
+mesma regra divergem e a divergência é silenciosa.
+
+Quais nomes cada ferramenta lê de fato, verificado em 2026-09-29:
+
+| Arquivo | Lido por |
+|---|---|
+| `AGENTS.md` | Codex CLI, Kiro, Antigravity — nativamente |
+| `CLAUDE.md` | Claude Code |
+| `GEMINI.md` | Antigravity, Gemini CLI |
+
+> ⚠️ **`ANTIGRAVITY.md` não existe como mecanismo** e foi removido do template. O Antigravity lê
+> apenas `AGENTS.md` e `GEMINI.md` — confirmado na skill embutida do próprio produto, na
+> documentação oficial e por observação de sessão real, onde um `ANTIGRAVITY.md` presente no
+> projeto nunca foi aberto. Um arquivo que parece hook e não é custa depuração a alguém.
+
 ## Quick start
 
 Requer **Python 3.11+**. O gerador é **stdlib pura, zero dependências**; a única biblioteca de
@@ -87,7 +129,7 @@ Opções: `--descricao "..."`, `--stack "Python 3.12 + FastAPI"`, `--deps requir
 ```
 meu-projeto/
 ├── AGENTS.md                       # constituição: princípios + tabela de roteamento do steering
-├── CLAUDE.md · ANTIGRAVITY.md      # stubs agnósticos: apontam para AGENTS.md
+├── CLAUDE.md · GEMINI.md           # ponteiros de 4 linhas: apontam para AGENTS.md
 ├── CHANGELOG.md                    # Keep a Changelog, pronto para a primeira entrada
 ├── Arquitetura/
 │   ├── arquitetura.drawio          # diagrama C4 (esqueleto, para você desenhar)
@@ -111,7 +153,10 @@ meu-projeto/
 │   └── cloud/                       # OpenTofu: main.tf, versions.tf, modules/exemplo-servico/
 ├── scripts/
 │   └── verificar_drift_arquitetura.py   # compara mapa.yml × drawio × tofu × compose
-└── .github/workflows/qualidade.yml # CI: drift (informativo), gitleaks, pip-audit
+├── tests/
+│   ├── unidade/ · integracao/ · e2e/    # camadas da suíte
+│   └── README.md                        # regras das três camadas + seed determinístico
+└── .github/workflows/qualidade.yml # CI: testes, lint/tipos, governança, drift, gitleaks, pip-audit
 ```
 
 ## Pós-geração

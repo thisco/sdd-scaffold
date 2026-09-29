@@ -25,6 +25,76 @@ jobs:
             echo "::warning title=Drift de Arquitetura::${SAIDA//$'\n'/ | }"
           fi
 
+  testes:
+    name: Testes automatizados
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # Instalação congelada: sem lockfile respeitado, o CI testa um conjunto de
+      # dependências diferente do da máquina de quem desenvolveu.
+      - name: Instalar dependências (congelado)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r {{ARQUIVO_DEPENDENCIAS}}
+      # <!-- preencher: se o projeto não é Python, trocar este job pelo runner da stack
+      #      (ex.: `npm ci && npm test`, `mvn -B verify`, `go test ./...`). Mantenha o
+      #      princípio: instalação congelada + suíte completa bloqueando o merge. -->
+      - name: Suíte completa
+        run: pytest tests/ -q
+
+  lint-e-tipos:
+    name: Lint, formato e tipos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install ruff mypy
+      # <!-- preencher: ajustar às ferramentas da stack e aos caminhos do projeto. -->
+      - name: Lint e formato (ruff)
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Tipos (mypy)
+        continue-on-error: true
+        run: mypy . || echo "::warning title=mypy::inconformidades de tipo — ver log do job"
+
+  governanca:
+    name: Governança carregável pelos harnesses
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # O Codex trunca documentos de projeto em project_doc_max_bytes = 32768 bytes.
+      # Um AGENTS.md acima disso é silenciosamente cortado: a constituição perde o fim
+      # sem nenhum aviso ao agente ou ao desenvolvedor.
+      - name: AGENTS.md dentro do limite de contexto
+        run: |
+          LIMITE=30000
+          TAMANHO=$(wc -c < AGENTS.md)
+          echo "AGENTS.md: $TAMANHO bytes (limite de alerta $LIMITE, truncamento real em 32768)"
+          if [ "$TAMANHO" -ge "$LIMITE" ]; then
+            echo "::error title=AGENTS.md grande demais::$TAMANHO bytes — mova detalhe operacional para docs/steering/"
+            exit 1
+          fi
+      # AGENTS.md é a fonte única; os ponteiros de ferramenta precisam apontar para ele.
+      - name: Ponteiros de ferramenta íntegros
+        run: |
+          FALHOU=0
+          for PONTEIRO in CLAUDE.md GEMINI.md; do
+            if [ ! -f "$PONTEIRO" ]; then
+              echo "::error title=Ponteiro ausente::$PONTEIRO não existe"; FALHOU=1; continue
+            fi
+            grep -q 'AGENTS.md' "$PONTEIRO" || { echo "::error title=Ponteiro quebrado::$PONTEIRO não referencia AGENTS.md"; FALHOU=1; }
+          done
+          if [ -f ANTIGRAVITY.md ]; then
+            echo "::error title=Ponteiro inerte::ANTIGRAVITY.md não é lido por ferramenta alguma — o Antigravity lê AGENTS.md e GEMINI.md"; FALHOU=1
+          fi
+          exit $FALHOU
+
   segredos:
     name: Varredura de segredos (gitleaks)
     runs-on: ubuntu-latest

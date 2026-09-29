@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    name: Testes do gerador
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install pytest pyyaml
+      - name: Suíte do gerador
+        run: pytest -q
+
+  geracao-real:
+    name: Gera projeto e valida o resultado
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pyyaml
+      - name: Configurar identidade git (exigida pelo commit inicial)
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI"
+      - name: Gerar projeto de ponta a ponta
+        run: |
+          python3 criar_projeto.py --nome projeto-ci --destino /tmp/saida \
+            --descricao "Projeto de verificação do CI." --stack "Python 3.12"
+      - name: O drift check do projeto gerado precisa rodar
+        run: python3 /tmp/saida/projeto-ci/scripts/verificar_drift_arquitetura.py --raiz /tmp/saida/projeto-ci
+      - name: Nenhum placeholder residual e nenhum artefato de SO
+        run: |
+          ! grep -rl '{{[A-Z_]*}}' /tmp/saida/projeto-ci --include='*.md' --include='*.yml' --include='*.py' || exit 1
+          ! find /tmp/saida/projeto-ci -name .DS_Store -o -name '*.pyc' | grep . || exit 1
