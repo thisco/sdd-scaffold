@@ -1,0 +1,11 @@
+# Dependências de {{NOME_PROJETO}}.
+# Stack: {{STACK}}
+#
+# O CI instala este arquivo de forma congelada nos jobs de teste e de auditoria de
+# dependências. Sem ele, os dois jobs falham no primeiro PR do projeto.
+
+# O drift check da Arquitetura Viva precisa de:
+pyyaml
+
+# <!-- preencher: dependências reais do projeto, com versão fixada. Se a stack não for
+#      Python, remova este arquivo e ajuste os jobs `testes` e `dependencias` do CI. -->

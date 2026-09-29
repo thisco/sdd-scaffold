@@ -20,7 +20,8 @@ TEMPLATE = Path(__file__).resolve().parent / "template"
 # em vez de ser copiada para dentro deste template. Assim existe uma fonte só, e o
 # projeto recebe a versão vigente no dia em que nasce, com a origem registrada.
 ORIGEM_CICLO_PADRAO = "https://github.com/thisco/sdd-lifecycle.git"
-EXTENSOES_TEXTO = {".md", ".yml", ".yaml", ".py", ".tf", ".gitignore", ".drawio", ""}
+EXTENSOES_TEXTO = {".md", ".yml", ".yaml", ".py", ".tf", ".toml", ".json",
+                   ".txt", ".gitignore", ".drawio", ""}
 # Artefatos de SO/cache nunca devem chegar ao projeto gerado. Atenção: `.DS_Store` tem
 # suffix "" (nome só com ponto inicial), e "" está em EXTENSOES_TEXTO de propósito, para
 # pegar arquivos de texto sem extensão. Sem este filtro o gerador tenta decodificar o

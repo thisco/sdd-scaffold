@@ -1,4 +1,24 @@
 {
+  "permissions": {
+    "ask": [
+      "Edit(AGENTS.md)",
+      "Edit(CLAUDE.md)",
+      "Edit(GEMINI.md)",
+      "Edit(docs/adr/**)",
+      "Edit(docs/constituicao/**)",
+      "Edit(Arquitetura/mapa.yml)",
+      "Write(AGENTS.md)",
+      "Write(docs/constituicao/**)",
+      "Bash(sed -i:*)",
+      "Bash(tee:*)"
+    ],
+    "deny": [
+      "Edit(.claude/settings.json)",
+      "Edit(.kiro/permissions.yaml)",
+      "Edit(scripts/proteger_governanca.py)",
+      "Edit(.github/workflows/**)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {

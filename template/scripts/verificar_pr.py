@@ -56,6 +56,11 @@ EVIDENCIA = re.compile(r"(passed|passou|ok\b|failed|\d+\s+test|coverage|cobertur
 
 COMENTARIO = re.compile(r"<!--.*?-->", re.S)
 RESIDUO = re.compile(r"^[\s\-*>#]*(\.\.\.|…|TODO|TBD|N/?A)?[\s\-*>#]*$", re.I)
+# Item de checklist vazio e pergunta sem resposta não contam como preenchimento.
+# O modelo lista as cinco perguntas em prosa numerada: se "há linha não vazia"
+# bastasse, o modelo intocado passaria por estar preenchido.
+CHECKBOX_VAZIO = re.compile(r"^\s*[-*]\s*\[\s*\]")
+PERGUNTA = re.compile(r"\?\s*$")
 
 
 def secao_preenchida(texto: str, *titulos: str) -> bool:
@@ -76,7 +81,14 @@ def secao_preenchida(texto: str, *titulos: str) -> bool:
     proximo = re.search(r"^#{1,6}\s", resto, re.M)
     corpo = resto[: proximo.start()] if proximo else resto
     corpo = COMENTARIO.sub("", corpo)
-    return any(linha.strip() and not RESIDUO.match(linha) for linha in corpo.splitlines())
+    for linha in corpo.splitlines():
+        texto = linha.strip()
+        if not texto or RESIDUO.match(linha) or CHECKBOX_VAZIO.match(linha):
+            continue
+        if PERGUNTA.search(texto):
+            continue  # pergunta do modelo, ainda sem resposta
+        return True
+    return False
 
 
 @dataclass
