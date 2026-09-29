@@ -38,9 +38,9 @@ e o projeto anda em círculos. Este scaffold ataca os quatro problemas de uma ve
 
 **1. Constituição + steering, agnósticos de ferramenta.** Um único `AGENTS.md` na raiz é a fonte de
 verdade de governança, com uma tabela de roteamento que carrega o steering de domínio sob demanda
-(`docs/steering/`). Adaptadores de ferramenta (`CLAUDE.md`, `ANTIGRAVITY.md`) são stubs mínimos
-que apontam para lá. *Por quê:* a regra vive uma vez, em texto aberto, qualquer humano ou agente lê,
-e trocar de ferramenta não custa nada.
+(`docs/steering/`). Codex, Kiro e Antigravity leem esse arquivo nativamente; `CLAUDE.md` e
+`GEMINI.md` são stubs de quatro linhas que apontam para ele. *Por quê:* a regra vive uma vez, em
+texto aberto, qualquer humano ou agente lê, e trocar de ferramenta não custa nada.
 
 **2. SDD com tiers de rigor.** Toda mudança é classificada em Tier 0 (trivial, direto), Tier 1
 (pequeno, plano leve) ou Tier 2 (feature/estrutural: spec → plano → checkpoints → ADR). *Por quê:* processo
@@ -61,6 +61,23 @@ lembra o que aprendeu.
 Tier 2 passa por revisão adversarial *contra a spec* (não contra o diff); specs que tocam entrada
 externa respondem a um checklist de threat-model. *Por quê:* "confie em mim, funciona" não é evidência,
 e um revisor que parte da spec pega o requisito que foi silenciosamente esquecido.
+
+### O que impede e o que orienta
+
+Os cinco pilares acima são texto: eles entram no contexto do agente e o orientam. Texto depende de
+o agente seguir, e ele costuma seguir, mas não é garantia.
+
+O scaffold também instala três controles que são código rodando fora do modelo, um por ferramenta,
+com a mesma regra: o agente escreve código, testes, specs e planos, e não reescreve a constituição,
+as ADRs nem o mapa de arquitetura por conta própria.
+
+| Ferramenta | Controle | Arquivo |
+|---|---|---|
+| Claude Code | hook antes da escrita | `scripts/proteger_governanca.py` e `.claude/settings.json` |
+| Kiro | regra declarativa, `deny` sobre `ask` sobre `allow` | `.kiro/permissions.yaml` |
+| Codex | fixa `git_attribution` desligado, protegendo o princípio de não citar marca de IA | `.codex/requirements.toml` |
+
+Saber em qual das duas camadas cada regra está é o que separa governança de intenção.
 
 ## As três camadas de governança
 
@@ -83,7 +100,14 @@ defaults para funcionar sem ele. Procedimento específico de um projeto vira **s
 promovida ao repositório compartilhado; se provar valor em dois projetos, sobe por PR.
 
 Decisão completa, alternativas descartadas e riscos em
-[`docs/adr/0001-separacao-entre-premissa-procedimento-e-parametro.md`](docs/adr/0001-separacao-entre-premissa-procedimento-e-parametro.md).
+[`docs/adr/0001-separacao-entre-premissa-procedimento-e-parametro.md`](docs/adr/0001-separacao-entre-premissa-procedimento-e-parametro.md),
+que inclui o teste empírico feito antes de implementar: um agente cumpriu a constituição sem
+nenhuma skill instalada, o que rebaixou a justificativa da conversão.
+
+Falta uma camada acima destas três. Premissas que valem para **todos** os projetos de uma
+organização estão hoje copiadas dentro do `AGENTS.md` de cada um, então uma decisão nova não
+alcança projeto já gerado. A análise está em
+[`docs/plans/2026-09-29-analise-skills-mecanismos-e-constituicao.md`](docs/plans/2026-09-29-analise-skills-mecanismos-e-constituicao.md).
 
 ### Um corpo de skill, três pontos de montagem
 
@@ -141,17 +165,19 @@ Opções: `--descricao "..."`, `--stack "Python 3.12 + FastAPI"`, `--deps requir
 
 ```
 meu-projeto/
-├── AGENTS.md                       # constituição: princípios + tabela de roteamento do steering
+├── AGENTS.md                       # constituição: princípios + tabela de roteamento
 ├── CLAUDE.md · GEMINI.md           # ponteiros de 4 linhas: apontam para AGENTS.md
 ├── CHANGELOG.md                    # Keep a Changelog, pronto para a primeira entrada
+├── pyproject.toml                  # pytest (pythonpath, marcadores), ruff, mypy
+├── .gitignore
 ├── Arquitetura/
 │   ├── arquitetura.drawio          # diagrama C4 (esqueleto, para você desenhar)
 │   └── mapa.yml                    # manifesto de correspondência drawio × IaC × compose
 ├── docs/
 │   ├── PROJECT_MEMORY.md           # memória quente (~1 página), lida a cada sessão
-│   ├── steering/                   # normas de domínio destiladas (7 arquivos):
+│   ├── steering/                   # parâmetros de domínio deste projeto (7 arquivos):
 │   │   ├── sdd-processo.md          #   tiers, planos, checkpoints, git
-│   │   ├── arquitetura.md           #   ciclo da Arquitetura Viva, equivalências local→cloud
+│   │   ├── arquitetura.md           #   estrutura, decisões-chave, equivalências local para nuvem
 │   │   ├── seguranca.md             #   segredos, auth/RBAC, threat-model
 │   │   ├── qualidade.md             #   testes, lint, prove-it, contratos de saída
 │   │   ├── infra-devops.md          #   ambientes, deploy, migrations
@@ -185,9 +211,18 @@ meu-projeto/
 Depois de gerar o projeto, siga este checklist:
 
 - [ ] **Revisar `AGENTS.md`**, confira nome, stack e descrição substituídos; ajuste os princípios ao
-      seu contexto.
-- [ ] **Preencher os `<!-- preencher -->`** dos arquivos de `docs/steering/`, comandos de teste/lint,
-      mecanismo de auth, escopos de commit etc. São os pontos onde o modelo genérico vira o *seu* projeto.
+      seu contexto. Ele é lido a cada turno, então mantenha-o curto.
+- [ ] **Instalar a skill do ciclo.** O scaffold traz `skills/arquitetura-viva`, mas o ciclo SDD em si
+      é conduzido pela skill [`sdd-lifecycle`](https://github.com/thisco/sdd-lifecycle), que é um
+      repositório à parte. Copie-a para `skills/` se quiser o ciclo completo.
+- [ ] **Preencher os `<!-- preencher -->`.** Eles estão em `docs/steering/` (comandos de teste e
+      lint, mecanismo de auth, escopos de commit, ordem de rebuild) e também fora dele: `pyproject.toml`,
+      `tests/README.md`, `.kiro/permissions.yaml` e `docs/prd/MODELO-prd.md`. São os pontos onde o
+      modelo genérico vira o *seu* projeto.
+- [ ] **Conferir os caminhos protegidos** em `.kiro/permissions.yaml` e em
+      `scripts/proteger_governanca.py`, acrescentando o que for sensível aqui (migrações já
+      aplicadas, contratos externos, chaves de configuração).
+- [ ] **Escrever o PRD** antes da primeira spec de Tier 2, usando `docs/prd/MODELO-prd.md`.
 - [ ] **Desenhar o diagrama** em `Arquitetura/arquitetura.drawio` (o esqueleto usa o modelo C4).
 - [ ] **Ajustar `Arquitetura/mapa.yml`**, mapeie cada componente lógico para seu nó no diagrama, módulo
       de IaC e serviço no compose.
