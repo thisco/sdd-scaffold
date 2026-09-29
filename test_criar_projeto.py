@@ -141,3 +141,51 @@ def test_hook_protege_governanca_e_libera_codigo(tmp_path):
     for livre in ("src/app.py", "tests/unidade/test_app.py", "docs/specs/2026-01-01-x.md",
                   "docs/plans/2026-01-01-x.md", "README.md"):
         assert decidir(livre) is None, f"{livre} não deveria ser bloqueado"
+
+
+def test_constituicao_organizacional_inline_e_verificavel(tmp_path):
+    """Camada 0: a constituição vale para todos os projetos, então precisa estar
+    SEMPRE no contexto, e não num arquivo lido sob demanda. Ela fica inline no
+    AGENTS.md entre marcadores; o arquivo canônico existe para o CI conferir que
+    o bloco não divergiu."""
+    import subprocess as _sp
+    destino = mod.gerar(nome="proj-const", destino=tmp_path, descricao="d",
+                        stack="s", deps="requirements.txt")
+    canonico = destino / "docs" / "constituicao" / "padrao-v1.0.md"
+    assert canonico.is_file(), "constituição canônica ausente"
+
+    agents = (destino / "AGENTS.md").read_text(encoding="utf-8")
+    assert "<!-- constituicao:inicio" in agents and "<!-- constituicao:fim -->" in agents, \
+        "AGENTS.md não delimita o bloco da constituição"
+    bloco = agents.split("<!-- constituicao:inicio", 1)[1].split("-->", 1)[1]
+    bloco = bloco.split("<!-- constituicao:fim -->", 1)[0].strip()
+    assert bloco == canonico.read_text(encoding="utf-8").strip(), \
+        "o bloco inline divergiu do arquivo canônico"
+
+    verificador = destino / "scripts" / "verificar_constituicao.py"
+    assert verificador.is_file(), "verificador ausente"
+    ok = _sp.run(["python3", str(verificador), "--raiz", str(destino)],
+                 capture_output=True, text=True)
+    assert ok.returncode == 0, f"verificador reprovou projeto recém-gerado: {ok.stdout}{ok.stderr}"
+
+    # adulterar o bloco inline deve ser detectado
+    (destino / "AGENTS.md").write_text(
+        agents.replace("Português do Brasil", "Klingon"), encoding="utf-8")
+    ruim = _sp.run(["python3", str(verificador), "--raiz", str(destino)],
+                   capture_output=True, text=True)
+    assert ruim.returncode != 0, "adulteração da constituição passou despercebida"
+
+
+def test_hook_e_permissoes_protegem_a_constituicao(tmp_path):
+    """A constituição é compartilhada: um projeto não a edita por conta própria."""
+    import json as _json, subprocess as _sp
+    destino = mod.gerar(nome="proj-prot", destino=tmp_path, descricao="d",
+                        stack="s", deps="requirements.txt")
+    script = destino / "scripts" / "proteger_governanca.py"
+    evento = _json.dumps({"tool_name": "Write",
+                          "tool_input": {"file_path": "docs/constituicao/padrao-v1.0.md"}})
+    saida = _sp.run(["python3", str(script)], input=evento, capture_output=True,
+                    text=True, check=True).stdout.strip()
+    assert saida, "o hook deixou a constituição ser reescrita sem aprovação"
+    regras = (destino / ".kiro" / "permissions.yaml").read_text(encoding="utf-8")
+    assert "docs/constituicao/**" in regras, "permissions.yaml não cobre a constituição"

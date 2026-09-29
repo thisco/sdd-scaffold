@@ -20,6 +20,7 @@ import sys
 
 PROTEGIDOS = [
     "AGENTS.md",
+    "docs/constituicao/*",
     "CLAUDE.md",
     "GEMINI.md",
     "docs/adr/*",

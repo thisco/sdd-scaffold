@@ -79,7 +79,7 @@ as ADRs nem o mapa de arquitetura por conta própria.
 
 Saber em qual das duas camadas cada regra está é o que separa governança de intenção.
 
-## As três camadas de governança
+## As quatro camadas de governança
 
 Governança aqui é classificada por **quando o conteúdo entra no contexto do agente**, não por
 assunto. É o que permite compartilhar procedimento entre projetos sem vazar detalhe de um projeto
@@ -87,6 +87,7 @@ para outro.
 
 | Camada | Onde mora | Quando entra | Conteúdo |
 |---|---|---|---|
+| **0 · Constituição** | bloco inline no `AGENTS.md`, canônico em `docs/constituicao/` | **Sempre** | Princípios que valem para todos os projetos da organização |
 | **1 · Premissa** | `AGENTS.md` + ponteiros `CLAUDE.md`, `GEMINI.md` | **Sempre** | Stack, idioma, princípios inegociáveis, mapa do repo, tabela de roteamento |
 | **2 · Procedimento** | `SKILL.md` compartilhável | **Sob demanda**, por gatilho | Como classificar tier, conduzir TDD, preparar PR, depurar |
 | **3 · Parâmetro** | `docs/steering/*.md` curtos | **Quando a skill instrui a ler** | Comandos reais, variáveis, convenções, contratos de saída |
@@ -104,9 +105,37 @@ Decisão completa, alternativas descartadas e riscos em
 que inclui o teste empírico feito antes de implementar: um agente cumpriu a constituição sem
 nenhuma skill instalada, o que rebaixou a justificativa da conversão.
 
-Falta uma camada acima destas três. Premissas que valem para **todos** os projetos de uma
-organização estão hoje copiadas dentro do `AGENTS.md` de cada um, então uma decisão nova não
-alcança projeto já gerado. A análise está em
+### A camada 0, e por que ela é inline
+
+Princípios que valem para todos os projetos não podem virar um arquivo lido sob demanda, porque
+premissa precisa valer em todo turno. Também não podem depender de include remoto: só uma das
+ferramentas implementa isso, e adotar esse caminho reintroduziria o lock-in que o scaffold
+existe para evitar.
+
+A solução é vendoring com verificação. A constituição fica **inline no `AGENTS.md`, entre
+marcadores**, e a cópia canônica em `docs/constituicao/` existe para que o CI confira que as
+duas batem:
+
+```bash
+python3 scripts/verificar_constituicao.py --raiz .
+# Constituição padrao-v1.0: bloco inline confere com o arquivo canônico.
+```
+
+O verificador detecta dois problemas com severidades diferentes. Editar a constituição dentro de
+um projeto **reprova** (exit 1), porque ela é compartilhada. Estar numa versão anterior à que a
+organização publicou apenas **avisa** (exit 0), porque um projeto pode ter motivo legítimo para
+esperar:
+
+```bash
+python3 scripts/verificar_constituicao.py --raiz . --origem ~/constituicao-publicada
+# AVISO: a organização publicou 'padrao-v2.0' e este projeto usa 'padrao-v1.0'.
+```
+
+Para adotar uma versão nova, substitua o arquivo canônico e reinline o bloco. Uma organização
+que queira sua própria constituição troca `docs/constituicao/padrao-v1.0.md` pelo seu texto e
+mantém o mecanismo.
+
+Análise completa em
 [`docs/plans/2026-09-29-analise-skills-mecanismos-e-constituicao.md`](docs/plans/2026-09-29-analise-skills-mecanismos-e-constituicao.md).
 
 ### Um corpo de skill, três pontos de montagem
@@ -174,6 +203,7 @@ meu-projeto/
 │   ├── arquitetura.drawio          # diagrama C4 (esqueleto, para você desenhar)
 │   └── mapa.yml                    # manifesto de correspondência drawio × IaC × compose
 ├── docs/
+│   ├── constituicao/padrao-v1.0.md # camada 0: cópia canônica, inline no AGENTS.md
 │   ├── PROJECT_MEMORY.md           # memória quente (~1 página), lida a cada sessão
 │   ├── steering/                   # parâmetros de domínio deste projeto (7 arquivos):
 │   │   ├── sdd-processo.md          #   tiers, planos, checkpoints, git
@@ -199,6 +229,7 @@ meu-projeto/
 ├── .kiro/permissions.yaml               # deny/ask por caminho sensível
 ├── scripts/
 │   ├── verificar_drift_arquitetura.py   # compara mapa.yml × drawio × tofu × compose
+│   ├── verificar_constituicao.py        # bloco inline × cópia canônica
 │   └── proteger_governanca.py           # hook PreToolUse
 ├── tests/
 │   ├── unidade/ · integracao/ · e2e/    # camadas da suíte
