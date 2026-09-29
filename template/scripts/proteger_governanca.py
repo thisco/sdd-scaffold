@@ -16,11 +16,18 @@ from __future__ import annotations
 
 import fnmatch
 import json
+import os
 import sys
+from pathlib import Path
 
 PROTEGIDOS = [
     "AGENTS.md",
     "docs/constituicao/*",
+    "Arquitetura/*.drawio",
+    ".claude/settings.json",
+    ".kiro/permissions.yaml",
+    ".codex/config.toml",
+    "scripts/proteger_governanca.py",
     "CLAUDE.md",
     "GEMINI.md",
     "docs/adr/*",
@@ -31,13 +38,26 @@ PROTEGIDOS = [
 FERRAMENTAS_DE_ESCRITA = {"Edit", "Write", "NotebookEdit", "MultiEdit"}
 
 
+def relativo_ao_projeto(caminho: str) -> str:
+    """Devolve o caminho relativo à raiz do projeto.
+
+    A ferramenta envia `file_path` ABSOLUTO. Comparar a string crua contra padrões
+    relativos deixa tudo passar, e foi assim que este hook nasceu inerte: os testes
+    alimentavam caminho relativo, que é o que o autor supôs, e não o que o harness
+    manda. Também resolve `..`, para que `docs/../AGENTS.md` não escape.
+    """
+    raiz = Path(os.environ.get("CLAUDE_PROJECT_DIR", ".")).resolve()
+    try:
+        p = Path(caminho)
+        p = (p if p.is_absolute() else raiz / p).resolve()
+        return p.relative_to(raiz).as_posix()
+    except (ValueError, OSError):
+        # fora da raiz do projeto: devolve o nome para ainda casar padrões simples
+        return Path(caminho).name
+
+
 def caminho_protegido(caminho: str) -> str | None:
-    # Atenção: lstrip remove caracteres, não prefixo. `".github/x".lstrip("./")` devolve
-    # "github/x" e quebra qualquer padrão que comece com ponto.
-    normalizado = caminho
-    for prefixo in ("./", "/"):
-        if normalizado.startswith(prefixo):
-            normalizado = normalizado[len(prefixo):]
+    normalizado = relativo_ao_projeto(caminho)
     for padrao in PROTEGIDOS:
         if fnmatch.fnmatch(normalizado, padrao) or normalizado == padrao:
             return padrao

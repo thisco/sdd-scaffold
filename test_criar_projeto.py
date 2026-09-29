@@ -1,5 +1,6 @@
 """Testes do gerador de projetos a partir do template."""
 import importlib.util
+import os
 import subprocess
 from pathlib import Path
 
@@ -407,3 +408,74 @@ def test_pode_dispensar_a_skill_externa(tmp_path):
                         deps="requirements.txt", origem_ciclo=None)
     assert not (destino / "skills" / "sdd-lifecycle").exists()
     assert not (destino / "skills" / "SKILL-CICLO-AUSENTE.md").exists()
+
+
+def _texto_do_template(destino, caminho):
+    """Lê o artefato real do projeto gerado.
+
+    Fixture escrita à mão testa o que o autor acha que o arquivo é. Foi assim que
+    a regressão de threat-model passou despercebida: o teste reconstruía a versão
+    anterior do modelo, enquanto o modelo real já tinha mudado de forma.
+    """
+    return (destino / caminho).read_text(encoding="utf-8")
+
+
+def test_modelos_em_branco_nao_passam_nos_verificadores(tmp_path):
+    """Os modelos REAIS, copiados e não preenchidos, precisam ser sinalizados."""
+    destino = mod.gerar(nome="p6", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    v = _verificador_pr(destino)
+
+    spec = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    achados = v.analisar(alterados=["src/auth/login.py", "docs/specs/2026-01-01-x.md"],
+                         conteudos={"docs/specs/2026-01-01-x.md": spec},
+                         migrations_na_base=set())
+    assert any("threat-model" in a.mensagem.lower() for a in achados), \
+        "MODELO-spec.md intocado foi aprovado: as perguntas contaram como respostas"
+
+    plano = _texto_do_template(destino, "docs/plans/MODELO-plano.md")
+    achados2 = v.analisar(alterados=["migrations/0009_x.py", "src/app.py",
+                                     "docs/plans/2026-01-01-x.md"],
+                          conteudos={"docs/plans/2026-01-01-x.md": plano},
+                          migrations_na_base=set())
+    texto = " ".join(a.mensagem.lower() for a in achados2)
+    assert "rollback" in texto, "MODELO-plano intocado passou no check de rollback"
+    assert "evidência" in texto, "MODELO-plano intocado passou no check de evidência"
+
+
+def test_hook_protege_caminho_absoluto_que_e_o_que_a_ferramenta_envia(tmp_path, monkeypatch):
+    """A ferramenta envia file_path ABSOLUTO. Testar só com relativo certifica um
+    comportamento que o harness nunca produz, e foi assim que este hook nasceu inerte."""
+    import json as _json, subprocess as _sp
+    destino = mod.gerar(nome="p7", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    script = destino / "scripts" / "proteger_governanca.py"
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(destino)}
+
+    def decidir(caminho):
+        evento = _json.dumps({"tool_name": "Edit", "tool_input": {"file_path": caminho}})
+        return _sp.run(["python3", str(script)], input=evento, capture_output=True,
+                       text=True, env=env).stdout.strip()
+
+    for protegido in ("AGENTS.md", "docs/adr/0001-x.md", "docs/constituicao/padrao-v1.0.md",
+                      "Arquitetura/mapa.yml", ".claude/settings.json"):
+        assert decidir(str(destino / protegido)), f"absoluto {protegido} passou livre"
+    assert decidir(str(destino / "docs" / ".." / "AGENTS.md")), "travessia com .. escapou"
+    assert not decidir(str(destino / "src" / "app.py")), "código não deveria ser bloqueado"
+
+
+def test_projeto_gerado_tem_o_que_o_proprio_ci_exige(tmp_path):
+    """Dois jobs do CI rodam pip install -r requirements.txt, e o job de governança
+    confere o tamanho do AGENTS.md. O projeto precisa nascer capaz de passar."""
+    destino = mod.gerar(nome="p8", destino=tmp_path, descricao="d", stack="Python 3.12",
+                        deps="requirements.txt", origem_ciclo=None)
+    assert (destino / "requirements.txt").is_file(), "CI instala arquivo que não existe"
+    # O padrão é {{IDENTIFICADOR}} em maiúsculas. Procurar "{{" cru dá falso positivo
+    # em quantificador de regex ({1,6}) e em expressão do GitHub Actions (${{ ... }}).
+    import re as _re
+    marcador = _re.compile(r"\{\{[A-Z_]+\}\}")
+    residuais = [str(p.relative_to(destino)) for p in destino.rglob("*")
+                 if p.is_file() and not p.is_symlink()
+                 and p.suffix in {".md", ".yml", ".yaml", ".py", ".tf", ".toml", ".json", ".txt"}
+                 and marcador.search(p.read_text(encoding="utf-8", errors="replace"))]
+    assert residuais == [], f"placeholders não substituídos: {residuais}"

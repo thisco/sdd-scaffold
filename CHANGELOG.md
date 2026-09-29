@@ -3,6 +3,35 @@
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.6.1] - 2026-09-29
+
+Correções de achados da primeira auditoria. Os três defeitos tinham a mesma causa: os testes
+exercitavam o modelo mental do autor, e não o artefato real.
+
+### Corrigido
+
+- **O hook de governança estava inerte.** A ferramenta envia `file_path` absoluto, e o hook
+  comparava contra padrões relativos, então nada casava. Os testes alimentavam caminho relativo,
+  que é o que o autor supôs, e por isso certificavam um comportamento que o harness nunca
+  produz. O caminho passa a ser resolvido contra `CLAUDE_PROJECT_DIR`, o que também fecha a
+  travessia por `..`.
+- **O verificador de PR voltou a aprovar o `MODELO-spec.md` em branco.** A própria v1.6.0
+  introduziu a regressão: mover as cinco perguntas de comentário HTML para prosa numerada fez a
+  verificação enxergar conteúdo onde há apenas perguntas. O teste de regressão não pegou porque
+  construía à mão a versão anterior do modelo. Pergunta sem resposta e item de checklist vazio
+  deixam de contar, e os testes passam a ler os modelos reais do template.
+- **O projeto gerado não conseguia passar no próprio CI.** Faltava o `requirements.txt` que dois
+  jobs instalam, e o `pyproject.toml` nascia com `{{NOME_PROJETO}}` porque `.toml` estava fora
+  de `EXTENSOES_TEXTO`. A mesma omissão existia na allowlist do teste de placeholder residual,
+  então nada acusava.
+
+### Adicionado
+
+- Permissões declarativas em `.claude/settings.json`, com `ask` e `deny` por caminho. Elas
+  alcançam o `Bash`, que o hook não alcança: sem isso, `sed -i AGENTS.md` contornava a proteção.
+- O hook passa a proteger também o diagrama, os arquivos de configuração das três ferramentas e
+  ele próprio.
+
 ## [1.6.0] - 2026-09-29
 
 Instalação da skill do ciclo na geração, e revisão de toda a documentação.
