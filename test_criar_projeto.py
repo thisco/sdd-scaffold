@@ -189,3 +189,91 @@ def test_hook_e_permissoes_protegem_a_constituicao(tmp_path):
     assert saida, "o hook deixou a constituição ser reescrita sem aprovação"
     regras = (destino / ".kiro" / "permissions.yaml").read_text(encoding="utf-8")
     assert "docs/constituicao/**" in regras, "permissions.yaml não cobre a constituição"
+
+
+def _verificador_pr(destino):
+    """Carrega o verificador de PR do projeto gerado como módulo."""
+    import importlib.util as _il
+    import sys as _sys
+    caminho = destino / "scripts" / "verificar_pr.py"
+    assert caminho.is_file(), "verificar_pr.py ausente no projeto gerado"
+    spec = _il.spec_from_file_location("verificar_pr", caminho)
+    m = _il.module_from_spec(spec)
+    # dataclasses resolve o módulo por sys.modules; sem registrar, o decorator falha.
+    _sys.modules["verificar_pr"] = m
+    spec.loader.exec_module(m)
+    return m
+
+
+def test_pr_que_altera_migration_ja_aplicada_reprova(tmp_path):
+    """Editar migration que já rodou em produção corrompe o histórico de schema.
+    É inequívoco e perigoso, então bloqueia."""
+    v = _verificador_pr(mod.gerar(nome="p1", destino=tmp_path, descricao="d", stack="s",
+                                  deps="requirements.txt"))
+    achados = v.analisar(
+        alterados=["migrations/0001_inicial.py"],
+        conteudos={},
+        migrations_na_base={"migrations/0001_inicial.py"},
+    )
+    bloqueios = [a for a in achados if a.bloqueia]
+    assert bloqueios, "alterar migration já aplicada deveria bloquear"
+    assert "0001_inicial" in bloqueios[0].mensagem
+
+    # criar migration nova não bloqueia
+    ok = v.analisar(alterados=["migrations/0002_nova.py"], conteudos={},
+                    migrations_na_base={"migrations/0001_inicial.py"})
+    assert not [a for a in ok if a.bloqueia]
+
+
+def test_mudanca_sensivel_exige_threat_model_na_spec(tmp_path):
+    """Spec que toca auth, upload, entrada externa ou IaC responde às 5 perguntas."""
+    v = _verificador_pr(mod.gerar(nome="p2", destino=tmp_path, descricao="d", stack="s",
+                                  deps="requirements.txt"))
+    sem = v.analisar(
+        alterados=["src/auth/login.py", "docs/specs/2026-01-01-login.md"],
+        conteudos={"docs/specs/2026-01-01-login.md": "# Login\n\nFaz login."},
+        migrations_na_base=set(),
+    )
+    assert any("threat-model" in a.mensagem.lower() for a in sem), \
+        "mudança em auth sem threat-model deveria ser sinalizada"
+
+    com = v.analisar(
+        alterados=["src/auth/login.py", "docs/specs/2026-01-01-login.md"],
+        conteudos={"docs/specs/2026-01-01-login.md":
+                   "# Login\n\n## Threat-model\n\n1. Entrada não confiável? Sim, mitigado por…"},
+        migrations_na_base=set(),
+    )
+    assert not any("threat-model" in a.mensagem.lower() for a in com)
+
+
+def test_plano_sem_rollback_e_sem_evidencia_e_sinalizado(tmp_path):
+    v = _verificador_pr(mod.gerar(nome="p3", destino=tmp_path, descricao="d", stack="s",
+                                  deps="requirements.txt"))
+    achados = v.analisar(
+        alterados=["migrations/0002_x.py", "src/app.py", "docs/plans/2026-01-01-x.md"],
+        conteudos={"docs/plans/2026-01-01-x.md": "# Plano\n\nFazer a coisa."},
+        migrations_na_base=set(),
+    )
+    texto = " ".join(a.mensagem.lower() for a in achados)
+    assert "rollback" in texto, "mudança de schema sem rollback declarado deveria avisar"
+    assert "evidência" in texto, "plano sem evidência colada deveria avisar"
+    assert not [a for a in achados if a.bloqueia], "avisos não devem bloquear"
+
+
+def test_superficie_sensivel_nao_dispara_dentro_de_palavra(tmp_path):
+    """Regressão: 'iam' casava no meio de LEIAME.md e o PR de documentação recebia
+    aviso de threat-model. Aviso que dispara em arquivo irrelevante ensina o time a
+    ignorar todos os avisos."""
+    v = _verificador_pr(mod.gerar(nome="p4", destino=tmp_path, descricao="d", stack="s",
+                                  deps="requirements.txt"))
+    for inocente in ["LEIAME.md", "docs/miami.md", "src/authorship_display.py",
+                     "src/relatorio.py", "CHANGELOG.md"]:
+        achados = v.analisar(alterados=[inocente], conteudos={}, migrations_na_base=set())
+        assert not any("threat-model" in a.mensagem.lower() for a in achados), \
+            f"{inocente} não deveria disparar threat-model"
+
+    for real in ["src/auth/login.py", "infra/cloud/modules/iam/main.tf",
+                 "src/authentication.py", "api/upload.py", "src/rbac.py"]:
+        achados = v.analisar(alterados=[real], conteudos={}, migrations_na_base=set())
+        assert any("threat-model" in a.mensagem.lower() for a in achados), \
+            f"{real} deveria disparar threat-model"

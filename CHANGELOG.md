@@ -3,6 +3,33 @@
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.4.0] - 2026-09-29
+
+Mecanismos de PR: o processo passa a ser verificado, e não apenas escrito.
+
+### Adicionado
+
+- **`scripts/verificar_pr.py`** e o job `normas-do-pr`. Confere contra o diff quatro normas que
+  a constituição pedia sem ninguém verificar: threat-model na spec quando a mudança toca
+  superfície sensível, estratégia de rollback no plano quando mexe em schema, evidência de teste
+  colada no plano, e migration já aplicada não sendo editada.
+- A análise fica numa função pura sobre o retrato do PR, então os casos de borda são testáveis
+  sem repositório de mentira.
+
+### Severidades, e por quê
+
+Alterar migration já aplicada **bloqueia**: corrompe o histórico de schema de quem aplicou a
+anterior, é inequívoco e difícil de desfazer. Threat-model, rollback e evidência **avisam**:
+envolvem julgamento sobre o que é suficiente, e portão que reprova por julgamento ensina o time
+a contorná-lo.
+
+### Corrigido antes de publicar
+
+A primeira versão da detecção de superfície sensível casava substring, então `iam` disparava no
+meio de `LEIAME.md` e um PR só de documentação recebia aviso de threat-model. Aviso que dispara
+em arquivo irrelevante ensina a ignorar todos os avisos. Trocado por lista explícita de palavras
+inteiras, com teste de regressão cobrindo `LEIAME.md`, `miami.md` e `authorship_display.py`.
+
 ## [1.3.0] - 2026-09-29
 
 Camada 0: constituição organizacional.
