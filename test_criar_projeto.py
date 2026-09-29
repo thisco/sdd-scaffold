@@ -82,3 +82,17 @@ def test_agents_md_cabe_no_limite_de_contexto_do_codex(tmp_path):
                         stack="s", deps="requirements.txt")
     tamanho = (destino / "AGENTS.md").stat().st_size
     assert tamanho < 30000, f"AGENTS.md com {tamanho} bytes — perto do limite de 32768 do Codex"
+
+
+def test_suite_do_projeto_gerado_roda_sem_pythonpath_manual(tmp_path):
+    """Regressão empírica: um agente construiu uma feature completa sobre este
+    scaffold e a suíte só rodava com PYTHONPATH=. na frente. O job de CI do
+    template chama `pytest tests/` direto, então quebraria. O template precisa
+    declarar onde o código-fonte mora."""
+    destino = mod.gerar(nome="proj-pythonpath", destino=tmp_path, descricao="d",
+                        stack="s", deps="requirements.txt")
+    pyproject = destino / "pyproject.toml"
+    assert pyproject.is_file(), "template não emite pyproject.toml"
+    conteudo = pyproject.read_text(encoding="utf-8")
+    assert "[tool.pytest.ini_options]" in conteudo, "sem configuração de pytest"
+    assert "pythonpath" in conteudo, "pytest não sabe onde o código-fonte mora"

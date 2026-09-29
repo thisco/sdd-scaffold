@@ -1,6 +1,6 @@
-# ADR-0001 — Separação entre premissa, procedimento e parâmetro
+# ADR-0001, Separação entre premissa, procedimento e parâmetro
 
-- **Status:** aceita — decisão registrada em 2026-09-29; implementação programada (ver Consequências)
+- **Status:** aceita com justificativa revisada em 2026-09-29 (ver Verificação empírica). Implementação programada.
 - **Contexto de origem:** pesquisa dos internos de 5 harnesses de coding agent
   (Claude Code 2.1.267, Codex CLI 0.157.1, Kiro, Antigravity, DeepSeek dsh), documentada em
   `serpro-cloud-ia-governance/docs/research/harness-internals/`
@@ -25,15 +25,15 @@ A pesquisa dos harnesses trouxe dois fatos que forçam a decisão:
 2. **A tabela de roteamento do steering funciona por prompt, não por mecanismo.** No Codex, o
    `AGENTS.md` é concatenado *verbatim* dentro de `<INSTRUCTIONS>` como mensagem `user`; o
    harness não interpreta a tabela. O agente lê `docs/steering/*.md` porque a constituição
-   manda — o que é obediência, não garantia. Apenas skills têm *progressive disclosure* nativo.
+   manda, o que é obediência, não garantia. Apenas skills têm *progressive disclosure* nativo.
 
 Se o procedimento virar skill compartilhada entre projetos, surge a pergunta que motiva esta
 ADR: **onde ficam as instruções e premissas específicas de cada projeto?**
 
 ## Decisão
 
-Classificar todo conteúdo de governança por **semântica de carregamento** — quando ele entra no
-contexto do agente — e não por assunto. Três camadas:
+Classificar todo conteúdo de governança por **semântica de carregamento**, quando ele entra no
+contexto do agente, e não por assunto. Três camadas:
 
 | Camada | Onde mora | Quando entra no contexto | Conteúdo |
 |---|---|---|---|
@@ -46,7 +46,7 @@ contexto do agente — e não por assunto. Três camadas:
 **Premissa não pode morar em skill.** Skills são reveladas *condicionalmente*, por casamento de
 gatilho. Uma premissa como "este projeto é escrito em pt-BR e usa Postgres 16" precisa valer em
 todo turno, inclusive naqueles em que nenhum gatilho casou. Por isso a camada 1 é sempre
-carregada e precisa permanecer pequena — o Codex trunca documentos de projeto em
+carregada e precisa permanecer pequena, o Codex trunca documentos de projeto em
 `project_doc_max_bytes = 32768` bytes, **silenciosamente**.
 
 ### Regra de dependência
@@ -62,7 +62,7 @@ a skill.
 Procedimento genuinamente específico de um projeto vira **skill local** em `.claude/skills/` (ou
 o diretório equivalente da ferramenta), marcada como local e **não promovida** ao repositório
 compartilhado. Uma skill local que se provar útil em dois ou mais projetos é promovida por PR ao
-repositório central — é o laço de composição que faz o conhecimento acumular em vez de ser
+repositório central, é o laço de composição que faz o conhecimento acumular em vez de ser
 reinventado por projeto.
 
 ### Classificação dos sete arquivos atuais
@@ -71,13 +71,13 @@ Converter todos seria indireção sem retorno: dois deles são irredutivelmente 
 
 | Arquivo | Linhas / marcadores | Destino |
 |---|---|---|
-| `sdd-processo.md` | 85 / 1 | Vira skill — procedimento quase puro |
+| `sdd-processo.md` | 85 / 1 | Vira skill, procedimento quase puro |
 | `troubleshooting.md` | 16 / 1 | Vira skill |
 | `qualidade.md` | 41 / 3 | Skill + parâmetros |
 | `seguranca.md` | 36 / 1 | Skill + parâmetros |
-| `arquitetura.md` | 83 / 3 | Skill + parâmetros — a regra da Arquitetura Viva é genérica; a arquitetura em si é do projeto |
+| `arquitetura.md` | 83 / 3 | Skill + parâmetros, a regra da Arquitetura Viva é genérica; a arquitetura em si é do projeto |
 | `frontend-ux.md` | 30 / 3 | Skill + parâmetros |
-| `infra-devops.md` | 44 / 3 | **Permanece só no repositório** — ambiente, deploy e migrations são do projeto |
+| `infra-devops.md` | 44 / 3 | **Permanece só no repositório**, ambiente, deploy e migrations são do projeto |
 
 ## Alternativas consideradas e descartadas
 
@@ -85,7 +85,7 @@ Converter todos seria indireção sem retorno: dois deles são irredutivelmente 
   disso, `infra-devops.md` não tem conteúdo compartilhável que justifique a indireção.
 - **Tudo em steering, como hoje.** Descartada: abre mão do único mecanismo de *progressive
   disclosure* que os três harnesses implementam nativamente, e impede compartilhar procedimento
-  entre projetos sem copiar arquivo — que é a causa clássica de divergência.
+  entre projetos sem copiar arquivo, que é a causa clássica de divergência.
 - **Duplicar o conteúdo nas duas formas.** Descartada pelo mesmo motivo pelo qual `CLAUDE.md` e
   `GEMINI.md` são ponteiros de quatro linhas em vez de cópias do `AGENTS.md`: duas cópias da
   mesma regra divergem, e a divergência é silenciosa.
@@ -105,13 +105,62 @@ Converter todos seria indireção sem retorno: dois deles são irredutivelmente 
 - ⚠️ **`sgd-catalogo-nuvem` roda esta governança em produção.** A migração precisa ser validada
   lá antes de o scaffold anunciar a v2.
 - Indireção a mais: quem lê um steering curto precisa saber qual skill traz o procedimento. A
-  tabela de roteamento do `AGENTS.md` passa a ter duas colunas — "skill que ativa" e "parâmetros
-  locais" — para que a indireção seja explícita.
+  tabela de roteamento do `AGENTS.md` passa a ter duas colunas, "skill que ativa" e "parâmetros
+  locais", para que a indireção seja explícita.
 - ⚠️ **Na CLI do Kiro os modos de inclusão de steering não funcionam**: tudo em
   `.kiro/steering/` carrega sempre. Steering precisa continuar pequeno, ou custa contexto em
   toda chamada.
 
-**Implementação** — esta ADR registra a decisão; a execução é a Onda 2 do plano de melhoria
+**Implementação**, esta ADR registra a decisão; a execução é a Onda 2 do plano de melhoria
 (converter os arquivos, emitir os diretórios de skill por ferramenta apontando para um único
 corpo, reescrever a tabela de roteamento, escrever o guia de migração e validar no
 `sgd-catalogo-nuvem`).
+
+
+---
+
+## Verificação empírica (2026-09-29, depois da decisão acima)
+
+A justificativa original apoiava-se numa premissa que não tinha sido testada: a de que, sem
+mecanismo de carregamento, o agente tende a ignorar a tabela de roteamento do steering.
+Testamos essa premissa antes de implementar.
+
+**Montagem.** Geramos um projeto do scaffold, com `AGENTS.md` e os sete arquivos de steering,
+e **sem nenhuma skill instalada**. Demos a um agente uma tarefa de Tier 2 (domínio novo,
+persistência em Postgres, endpoint de API novo, infraestrutura) sob pressão explícita de prazo:
+demo no mesmo dia, requisitos fechados, execução solo, cliente grande.
+
+**Resultado: o agente seguiu a constituição.** Classificou o tier, escreveu spec antes do
+código, criou o plano com impacto arquitetural, abriu branch na convenção, gerou ADR para a
+decisão de persistência, escreveu testes, atualizou o CHANGELOG e a memória do projeto, e fez a
+revisão adversarial contra a spec. Na revisão encontrou uma corrida de concorrência real que
+ninguém havia pedido para procurar, e corrigiu com bloqueio de linha no banco. Também preencheu
+sete dos quinze marcadores `<!-- preencher -->` do steering por conta própria.
+
+**O que ele não fez.** Pulou os checkpoints humanos entre fases. Declarou o desvio no plano em
+vez de escondê-lo. Como o teste rodou sem humano disponível para aprovar, esse ponto ficou
+inconclusivo.
+
+**Consequência para esta ADR.** A afirmação técnica continua válida: no Codex o `AGENTS.md`
+entra concatenado como mensagem de usuário e nenhum mecanismo força a leitura do steering. Mas
+a consequência prática que motivava a urgência não se sustentou. O agente obedeceu a
+constituição sob pressão, e a tabela de roteamento funcionou como instrução.
+
+As justificativas que permanecem são mais modestas do que as registradas acima:
+
+1. Compartilhar procedimento entre projetos como ativo versionado, de modo que uma melhoria
+   feita em um projeto chegue aos outros por PR em vez de cópia manual. Este é o motivo real.
+2. No Codex, o prompt de sistema exige o uso da skill cujo gatilho casa, o que é ganho de
+   mecanismo. Dado o resultado acima, o ganho é menor do que se supunha.
+
+A justificativa que deixa de valer é "sem skill o agente ignora o steering". Ela não sobreviveu
+ao teste.
+
+**Efeito na prioridade.** A Onda 2 deixa de ser correção e passa a ser investimento em
+reuso. Continua valendo a pena para quem mantém vários projetos sobre o mesmo scaffold, e não
+justifica pressa nem quebra de compatibilidade apressada.
+
+**Defeito real encontrado pelo mesmo teste.** O projeto gerado não declarava onde o
+código-fonte mora, então `pytest tests/` falhava com `ModuleNotFoundError` e só passava com
+`PYTHONPATH=.` na frente. O job de testes do CI do template chama `pytest` direto e teria
+quebrado. Corrigido com `template/pyproject.toml` e teste de regressão.
