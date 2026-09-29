@@ -3,6 +3,35 @@
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.5.0] - 2026-09-29
+
+Três skills novas, e a redução do steering ao que é de projeto.
+
+### Adicionado
+
+- **`skills/threat-model`**: as cinco perguntas obrigatórias, o que conta como mitigação de
+  verdade, menor privilégio em IaC e tratamento de segredo, incluindo a ordem correta quando um
+  segredo vaza (rotacionar antes de limpar o histórico, porque remover o commit não invalida a
+  credencial).
+- **`skills/migrations-reversiveis`**: reversibilidade, rollback declarado antes da execução, e
+  o padrão expandir e contrair para mudança destrutiva.
+- **`skills/estados-de-interface`**: os quatro estados por tela e por consulta, por que o estado
+  vazio não é estado de erro, e protótipo aprovado antes do código.
+
+### Modificado
+
+- `docs/steering/seguranca.md` de 36 para 28 linhas, `frontend-ux.md` de 30 para 26 e
+  `infra-devops.md` mantém 42 com o procedimento substituído por parâmetros. O steering completo
+  saiu de 335 para 280 linhas, e o que permanece é o que muda de projeto para projeto.
+- Tabela de roteamento do `AGENTS.md` com as quatro skills.
+
+### Nota sobre a redução projetada
+
+A análise estimava cerca de 121 linhas de steering ao final. O número real ficou em 280 porque
+`sdd-processo.md` não foi convertido: ele duplica a `sdd-lifecycle`, que vive em repositório
+separado e não acompanha o projeto gerado. Enquanto essa skill não for empacotada aqui ou
+instalada por quem gera o projeto, as 85 linhas precisam continuar no steering.
+
 ## [1.4.0] - 2026-09-29
 
 Mecanismos de PR: o processo passa a ser verificado, e não apenas escrito.

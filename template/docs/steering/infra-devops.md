@@ -1,6 +1,8 @@
 # Infraestrutura e DevOps
 
-> **Escopo:** ambiente de dev local, CI/CD, deploy, migrations e rollback.
+> **Escopo:** os parâmetros de ambiente e deploy deste projeto.
+> **Procedimento:** migrations reversíveis e estratégia de rollback estão na skill
+> `migrations-reversiveis`. O ciclo da Arquitetura Viva está na skill `arquitetura-viva`.
 > **Gatilho de leitura:** ao subir/atualizar o ambiente, fazer deploy ou mudar o schema do banco.
 > **Última destilação:** {{DATA}}
 
@@ -17,9 +19,8 @@ Avaliar o **impacto cloud** de qualquer alteração de infra conforme a tabela d
 
 ## Migrations
 
-- Use migrations versionadas em todas as alterações de esquema do banco de dados.
-- Cada arquivo de migration deve conter funções explícitas e reversíveis de `upgrade` e `downgrade`.
-- NUNCA edite migrations antigas já aplicadas em produção ou staging. Sempre crie uma nova migration corretiva incremental.
+<!-- preencher: ferramenta de migration adotada, comando de execução, e como provisionar o banco
+     efêmero em que o par upgrade/downgrade é testado. As regras estão na skill. -->
 
 ## Normas de deploy
 
@@ -30,11 +31,8 @@ Avaliar o **impacto cloud** de qualquer alteração de infra conforme a tabela d
 
 ## Rollback
 
-Todo plano que inclua mudança de schema ou de deploy **declara explicitamente a estratégia de rollback** antes da execução. Formas aceitas conforme o tipo de mudança:
-
-- Mudança de schema → `downgrade` da migration testado (executado ao menos uma vez em ambiente efêmero).
-- Mudança de deploy/imagem → redeploy da imagem anterior via workflow.
-- Perda ou corrupção de dados → restore a partir de backup.
+<!-- preencher: qual workflow faz redeploy da imagem anterior, onde ficam os backups e qual o
+     tempo de restauração conhecido. As formas aceitas estão na skill. -->
 
 ## Workflows existentes
 
