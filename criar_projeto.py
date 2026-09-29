@@ -28,7 +28,10 @@ def gerar(nome: str, destino: Path | str, descricao: str, stack: str, deps: str)
     if alvo.exists():
         raise FileExistsError(f"destino já existe: {alvo}")
 
-    shutil.copytree(TEMPLATE, alvo, ignore=IGNORAR)
+    # symlinks=True preserva os pontos de montagem de skills (.claude/skills, .codex/skills
+    # e .kiro/skills apontam para skills/). Sem isso o copytree resolve cada link e o projeto
+    # nasce com quatro cópias da mesma skill, que divergem no primeiro ajuste.
+    shutil.copytree(TEMPLATE, alvo, ignore=IGNORAR, symlinks=True)
 
     trocas = {
         "{{NOME_PROJETO}}": nome,
@@ -38,6 +41,8 @@ def gerar(nome: str, destino: Path | str, descricao: str, stack: str, deps: str)
         "{{DATA}}": dt.date.today().isoformat(),
     }
     for arquivo in alvo.rglob("*"):
+        if arquivo.is_symlink():
+            continue  # ponto de montagem: o corpo real já é visitado pelo caminho canônico
         if not arquivo.is_file() or arquivo.suffix not in EXTENSOES_TEXTO:
             continue
         try:

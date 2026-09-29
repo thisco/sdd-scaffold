@@ -1,0 +1,32 @@
+# Permissões declarativas do Kiro.
+#
+# Precedência: deny vence ask, que vence allow.
+#
+# A governança do repositório não se autoedita. O agente escreve código, testes, specs e
+# planos; ele não reescreve a constituição, as decisões já tomadas nem o mapa de arquitetura
+# sem que uma pessoa peça. As regras abaixo tornam isso mecânico, em vez de depender de
+# obediência a uma instrução de texto.
+#
+# O Codex chega ao mesmo resultado por sandbox de sistema operacional, deixando .git e os
+# diretórios de configuração somente-leitura no modo de escrita restrita.
+version: 1
+
+rules:
+  - capability: fs.write
+    match: ["AGENTS.md", "CLAUDE.md", "GEMINI.md"]
+    effect: ask
+
+  - capability: fs.write
+    match: ["docs/adr/**"]
+    effect: ask
+
+  - capability: fs.write
+    match: ["Arquitetura/mapa.yml", "Arquitetura/*.drawio"]
+    effect: ask
+
+  - capability: fs.write
+    match: [".git/**", ".github/workflows/**"]
+    effect: deny
+
+  # <!-- preencher: acrescente aqui os caminhos sensíveis deste projeto, por exemplo
+  #      migrações já aplicadas em produção, chaves de configuração ou contratos externos. -->

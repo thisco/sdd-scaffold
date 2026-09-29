@@ -3,6 +3,42 @@
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.2.0] - 2026-09-29
+
+Onda 2: primeira skill compartilhável, pontos de montagem por ferramenta e três mecanismos
+que passam a impedir em vez de só orientar.
+
+### Adicionado
+
+- **`skills/arquitetura-viva/SKILL.md`**, primeira conversão de steering em procedimento
+  compartilhável. Carrega o ciclo da Arquitetura Viva, o manifesto e a verificação de drift.
+  Os parâmetros que variam por projeto ficaram em `docs/steering/arquitetura.md`, que encolheu
+  de 83 para 42 linhas e manteve os três pontos de preenchimento.
+- **Pontos de montagem de skills.** `.claude/skills`, `.codex/skills` e `.kiro/skills` são
+  links para `skills/`. O gerador passa a preservar links simbólicos; antes ele resolvia cada
+  um e o projeto nascia com quatro cópias da mesma skill, prontas para divergir.
+- **`scripts/proteger_governanca.py`** e `.claude/settings.json`. Hook que roda antes da
+  escrita e pede aprovação para alterar `AGENTS.md`, os ponteiros de ferramenta, `docs/adr/`,
+  `Arquitetura/mapa.yml` e os workflows de CI. É a mesma regra que o Kiro aplica por
+  `permissions.yaml` e o Codex por sandbox, agora nas três ferramentas.
+- **`.kiro/permissions.yaml`** com precedência deny sobre ask sobre allow.
+- **`.codex/requirements.toml`** fixando `git_attribution` desligado, para que uma política de
+  organização não passe a exigir rodapé de atribuição contra o princípio 2 da constituição.
+- **`docs/prd/MODELO-prd.md`**. O fluxo saltava da ideia para a spec, e sem o PRD a spec acaba
+  inventando requisito para preencher lacuna.
+- Tabela de roteamento do `AGENTS.md` reescrita com duas colunas, separando procedimento de
+  parâmetro.
+
+### Decidido e não feito
+
+`sdd-processo.md` não virou skill. A `sdd-lifecycle` já cobre todos os tópicos dele, e em
+vários casos com mais profundidade: isolamento de branch aparece 11 vezes na skill contra 3 no
+steering, revisão adversarial 6 contra 2. Converter criaria uma segunda skill competindo com a
+primeira no mesmo terreno.
+
+As outras normas seguem como steering. A conversão acontece quando uma delas provar valor em
+mais de um projeto.
+
 ## [1.1.0] - 2026-09-29
 
 Onda 1 do plano de melhoria derivado da pesquisa dos internos de cinco harnesses de coding agent

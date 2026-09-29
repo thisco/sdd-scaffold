@@ -84,7 +84,20 @@ promovida ao repositório compartilhado; se provar valor em dois projetos, sobe 
 
 Decisão completa, alternativas descartadas e riscos em
 [`docs/adr/0001-separacao-entre-premissa-procedimento-e-parametro.md`](docs/adr/0001-separacao-entre-premissa-procedimento-e-parametro.md).
-A camada 1 e a 3 já existem; a camada 2 é a Onda 2 do plano de melhoria.
+
+### Um corpo de skill, três pontos de montagem
+
+As skills ficam em `skills/`. Cada ferramenta lê de um caminho diferente, então
+`.claude/skills`, `.codex/skills` e `.kiro/skills` são links para esse mesmo diretório. Editar
+a skill num lugar vale para os três, e não existe cópia para divergir.
+
+A primeira skill convertida foi `arquitetura-viva`, que carrega o ciclo, o manifesto e a
+verificação de drift. Os parâmetros que variam por projeto, como a tabela de equivalências
+local para nuvem, continuam em `docs/steering/arquitetura.md`.
+
+As demais normas continuam como steering. A conversão acontece quando uma delas provar valor
+em mais de um projeto, e não preventivamente: converter tudo de uma vez criaria skills
+competindo com as que já existem.
 
 ### Por que os ponteiros são de quatro linhas
 
@@ -144,6 +157,7 @@ meu-projeto/
 │   │   ├── infra-devops.md          #   ambientes, deploy, migrations
 │   │   ├── frontend-ux.md           #   padrões de painel/frontend
 │   │   └── troubleshooting.md        #   gotchas estáveis
+│   ├── prd/MODELO-prd.md           # modelo de PRD (o POR QUE)
 │   ├── specs/MODELO-spec.md        # modelo de especificação (o QUE)
 │   ├── plans/MODELO-plano.md       # modelo de plano de implementação (o COMO)
 │   ├── adr/MODELO-adr.md           # modelo de Architecture Decision Record
@@ -151,8 +165,15 @@ meu-projeto/
 ├── infra/
 │   ├── local/docker-compose.yml    # ambiente local (esqueleto)
 │   └── cloud/                       # OpenTofu: main.tf, versions.tf, modules/exemplo-servico/
+├── skills/
+│   └── arquitetura-viva/SKILL.md        # procedimento compartilhável (corpo único)
+├── .claude/skills · .codex/skills · .kiro/skills   # pontos de montagem para skills/
+├── .claude/settings.json                # hook que protege a governança
+├── .codex/requirements.toml             # fixa git_attribution desligado
+├── .kiro/permissions.yaml               # deny/ask por caminho sensível
 ├── scripts/
-│   └── verificar_drift_arquitetura.py   # compara mapa.yml × drawio × tofu × compose
+│   ├── verificar_drift_arquitetura.py   # compara mapa.yml × drawio × tofu × compose
+│   └── proteger_governanca.py           # hook PreToolUse
 ├── tests/
 │   ├── unidade/ · integracao/ · e2e/    # camadas da suíte
 │   └── README.md                        # regras das três camadas + seed determinístico

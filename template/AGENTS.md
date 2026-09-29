@@ -19,30 +19,39 @@ carregado sob demanda pela tabela de roteamento abaixo. Paradigma: **Spec-Driven
 5. **Segurança primeiro:** nunca commitar segredos (`.env` no runtime); lógica proprietária acoplada
    por interfaces + injeção de dependências. Detalhes em `docs/steering/seguranca.md`.
 6. **Arquitetura Viva:** docker-compose (local) → infraestrutura cloud (IaC) → diagrama `.drawio` +
-   `mapa.yml` sincronizados na mesma branch/PR. Guardrail completo em `docs/steering/arquitetura.md`.
+   `mapa.yml` sincronizados na mesma branch/PR. Procedimento na skill `arquitetura-viva`;
+   parâmetros deste projeto em `docs/steering/arquitetura.md`.
 7. **Memória contínua:** ler `docs/PROJECT_MEMORY.md` (memória quente, ~1 página) no início de toda
    sessão; registrar aprendizado novo ao encerrar sessão complexa.
 
 ## Tabela de roteamento do steering
 
-| Se a tarefa envolve… | Leia antes |
-|---|---|
-| Criar/alterar qualquer código | `docs/steering/sdd-processo.md` |
-| Mudança estrutural, infra, novo componente | `docs/steering/arquitetura.md` |
-| Auth, upload, entrada externa, IaC, segredos | `docs/steering/seguranca.md` |
-| Subir/atualizar ambiente, deploy, migrations | `docs/steering/infra-devops.md` |
-| Preparar PR (testes, lint, contrato de saída) | `docs/steering/qualidade.md` |
-| Painel/frontend | `docs/steering/frontend-ux.md` |
-| Debugging | `docs/steering/troubleshooting.md` |
+Governança tem três camadas, separadas por **quando o conteúdo entra no contexto**:
+premissa (este arquivo, sempre), procedimento (skills em `skills/`, por gatilho) e parâmetro
+(`docs/steering/`, quando a skill mandar ler). Detalhe em `docs/adr/` do scaffold.
+
+| Se a tarefa envolve… | Procedimento | Parâmetros deste projeto |
+|---|---|---|
+| Criar/alterar qualquer código | — | `docs/steering/sdd-processo.md` |
+| Mudança estrutural, infra, novo componente | skill `arquitetura-viva` | `docs/steering/arquitetura.md` |
+| Auth, upload, entrada externa, IaC, segredos | — | `docs/steering/seguranca.md` |
+| Subir/atualizar ambiente, deploy, migrations | — | `docs/steering/infra-devops.md` |
+| Preparar PR (testes, lint, contrato de saída) | — | `docs/steering/qualidade.md` |
+| Painel/frontend | — | `docs/steering/frontend-ux.md` |
+| Debugging | — | `docs/steering/troubleshooting.md` |
+
+As skills ficam em `skills/` e são montadas em `.claude/skills`, `.codex/skills` e
+`.kiro/skills`. Os três apontam para o mesmo corpo, então editar num lugar vale para todos.
 
 ## Mapa do repositório
 
 ```
 src/           código-fonte da aplicação (módulos/pacotes do domínio)
 infra/         local/ (docker-compose) · cloud/ (IaC multi-ambiente)
-docs/          specs/ · plans/ · adr/ · release-notes/ · steering/ · PROJECT_MEMORY.md
+docs/          prd/ · specs/ · plans/ · adr/ · release-notes/ · steering/ · PROJECT_MEMORY.md
 Arquitetura/   diagrama .drawio + mapa.yml (manifesto de correspondência)
 scripts/       utilitários (inclui verificar_drift_arquitetura.py)
+skills/        procedimento compartilhável, montado em .claude/ .codex/ .kiro/
 tests/         suíte automatizada (unidade, integração, e2e)
 ```
 
