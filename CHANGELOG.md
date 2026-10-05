@@ -3,6 +3,47 @@
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.7.0] - 2026-10-05
+
+Spec verificável e aprovada. A spec passa a ter requisitos com id, e o verificador de PR
+confere o rastro entre requisito, tarefa, teste e veredito, sempre com aviso e nunca com
+bloqueio.
+
+### Adicionado
+
+- **Requisitos com id e critério na spec.** O `MODELO-spec.md` traz a seção `Requisitos`, com
+  linhas `**R<n>**` e um critério de aceite em Dado/Quando/Então (ou EARS) logo abaixo.
+  Ela substitui "Objetivos" e "Critérios de aceite". Requisito sem critério gera aviso no PR.
+- **Registro da aprovação.** O cabeçalho da spec ganha `Aprovado por` e `Aprovado em`. Spec com
+  Status `aprovada` e sem aprovador gera aviso no PR.
+- **Marcador de dúvida `[ESCLARECER: …]` e a seção `Esclarecimentos`.** Spec aprovada, ou citada
+  por plano do PR, com marcador aberto gera aviso com a contagem.
+- **Rastreio no plano e no teste.** A tarefa do plano termina com `(R<n>)`, e o teste cita o
+  requisito com `# cobre: R<n>`. O verificador avisa quando um requisito não tem tarefa, quando
+  uma tarefa cita requisito que não existe e quando nenhum teste do PR o cita. Em plano Tier 2
+  com a tabela de veredito preenchida, avisa se falta algum requisito. A mensagem diz "citado em
+  teste", porque citação não é cobertura.
+- **Tabela `| R | veredito | evidência |`** na revisão adversarial do `MODELO-plano.md`.
+- **Ponto de montagem `.agents/skills`**, lido pelo Codex e pelo Antigravity, ao lado de
+  `.claude/skills`, `.codex/skills` e `.kiro/skills`.
+- **Opção `--versao-ciclo`** no gerador, para escolher a tag da skill do ciclo.
+- **Seção "Instalar pelo próprio agente" no README**, com o prompt que faz o agente clonar o
+  scaffold na tag `v1.7.0` e configurar o projeto.
+
+### Modificado
+
+- O gerador instala a skill do ciclo pela tag `v3.0.0`, e não mais pela `main`.
+- O `CLAUDE.md` do template importa a constituição com `@AGENTS.md`.
+- `qualidade.md` documenta a convenção `# cobre: R<n>` e o limite dela.
+- Os avisos novos só disparam quando a spec tem `R<n>` ou `Aprovado por`: a spec no formato
+  1.6.1 segue sem nenhum achado novo.
+
+### Corrigido
+
+- **O verificador de PR saía com 0 quando a base do diff não existia**, e a trava passava em
+  silêncio. Agora imprime `ERRO: base <base> não encontrada` e sai com 2.
+- `sdd-processo.md` chamava a implementação de "Fase 3". Ela é a Fase 6, como na skill do ciclo.
+
 ## [1.6.1] - 2026-09-29
 
 Correções de achados da primeira auditoria. Os três defeitos tinham a mesma causa: os testes

@@ -901,3 +901,13 @@ def test_readme_prompt_fixa_versao():
     assert clones and all("--branch" in l for l in clones), \
         f"clone sem tag no prompt: {clones}"
     assert "se o harness for o Kiro" in prompt, ".kiro/permissions.yaml deve ser condicional"
+
+
+def test_changelog_tem_entrada_170():
+    """cobre: R16. A entrada [1.7.0] existe, com Adicionado, Modificado e Corrigido."""
+    log = (Path(__file__).resolve().parent / "CHANGELOG.md").read_text(encoding="utf-8")
+    m = _re_spec.search(r"^## \[1\.7\.0\] - 2026-10-05\n(.*?)(?=^## \[)", log,
+                        _re_spec.M | _re_spec.S)
+    assert m, "entrada [1.7.0] - 2026-10-05 ausente"
+    for secao in ("Adicionado", "Modificado", "Corrigido"):
+        assert f"### {secao}" in m.group(1), f"1.7.0 sem a seção {secao}"

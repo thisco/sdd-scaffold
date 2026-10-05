@@ -115,7 +115,7 @@ gerados não são afetados, porque não há mecanismo de atualização.
   - o passo 3 confere `.agents/skills` junto dos demais pontos;
   - o título e o texto ficam neutros. O Kiro aparece como exemplo, e o `.kiro/permissions.yaml` é
     citado só como "se o harness for o Kiro".
-- [ ] **T9 (R16).** Acrescente a entrada `[1.7.0] - 2026-10-05` no `CHANGELOG.md`.
+- [x] **T9 (R16).** Acrescente a entrada `[1.7.0] - 2026-10-05` no `CHANGELOG.md`.
 - [ ] **T10.** Rode `python3 -m pytest -q test_criar_projeto.py`, ou o bloco equivalente no
   `pendentes.sh`, e cole a saída em Evidências. Ruff, se estiver configurado.
 - [ ] **T11.** Revisão adversarial independente contra a spec, com a tabela por requisito.
