@@ -21,6 +21,17 @@ Antes de solicitar o Code Review de um desenvolvedor sênior ou submeter um Pull
 - **Implementação de lógica começa por um teste que falha.** Escreva o teste antes do código de produção; ele deve falhar pela ausência da implementação, não por erro de setup.
 - **Correção de bug exige um teste que reproduz o defeito** — falha antes da correção, passa depois. A evidência das **duas execuções** (falha e sucesso) vai no plano.
 
+## Rastreio do requisito no teste
+
+- Em spec com requisitos `R<n>`, o teste cita o requisito que exercita: `# cobre: R<n>` em
+  comentário ou na docstring, ou o id no nome da função (`test_exporta_r2_vazio`). Vários ids
+  se separam por vírgula: `# cobre: R1, R2`.
+- O verificador de PR lê essa citação e avisa quando um `R<n>` da spec não aparece em nenhum
+  teste alterado no PR.
+- **Limite:** citação não é cobertura. A convenção prova que alguém apontou o requisito, e não
+  que o teste o exercita de verdade. Quem confere isso é a revisão adversarial, na tabela de
+  veredito do plano.
+
 ## Testes de integração
 
 - **Nunca** rodar testes de integração contra o banco de dev.

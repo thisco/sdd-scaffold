@@ -785,3 +785,23 @@ def test_main_le_os_testes_alterados_do_pr(tmp_path):
     assert "R2 não é citado em teste" in saida, saida
     assert "R1 não é citado em teste" not in saida, saida
     assert r.returncode == 0, "aviso não pode bloquear"
+
+
+def test_qualidade_documenta_cobre_r(tmp_path):
+    """cobre: R9. O steering de qualidade documenta `# cobre: R<n>` e o limite da convenção."""
+    destino = mod.gerar(nome="t5a", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    texto = _texto_do_template(destino, "docs/steering/qualidade.md")
+    assert "cobre: R" in texto, "a convenção de citar o requisito no teste não está documentada"
+    assert "não é cobertura" in texto.lower() or "não prova cobertura" in texto.lower(), \
+        "o limite da convenção (citação não é cobertura) não aparece"
+
+
+def test_sdd_processo_sem_fase_3_do_sdd(tmp_path):
+    """cobre: R15. A implementação é a Fase 6, como na skill do ciclo, e a volta é à Fase 1."""
+    destino = mod.gerar(nome="t5b", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    texto = _texto_do_template(destino, "docs/steering/sdd-processo.md")
+    assert "Fase 3 do SDD" not in texto
+    assert "(Fase 6 do SDD)" in texto
+    assert "retorna à Fase 1" in texto
