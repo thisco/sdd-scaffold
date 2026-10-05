@@ -48,6 +48,7 @@ SENSIVEL = re.compile(
 )
 MIGRATION = re.compile(r"(^|/)(migrations?|alembic)/", re.I)
 CODIGO = re.compile(r"\.(py|ts|tsx|js|jsx|go|java|rb|rs|kt|cs)$", re.I)
+TESTE = re.compile(r"(^|/)tests?/.*\.py$|(^|/)test_[^/]*\.py$")
 PLANO = re.compile(r"^docs/plans/\d{4}-\d{2}-\d{2}-.+\.md$")
 SPEC = re.compile(r"^docs/specs/\d{4}-\d{2}-\d{2}-.+\.md$")
 
@@ -351,6 +352,14 @@ def main() -> int:
     args = p.parse_args()
     raiz = Path(args.raiz).resolve()
 
+    existe = subprocess.run(["git", "-C", str(raiz), "rev-parse", "--verify", "--quiet",
+                             args.base], capture_output=True, text=True)
+    if existe.returncode != 0:
+        # Sem a base não há diff: seguir como "nenhum arquivo alterado" faria a trava
+        # passar em silêncio justamente quando está mal configurada.
+        print(f"ERRO: base {args.base} não encontrada")
+        return 2
+
     alterados = [c for c in _git("-C", str(raiz), "diff", "--name-only",
                                  f"{args.base}...HEAD").splitlines() if c]
     if not alterados:
@@ -364,10 +373,17 @@ def main() -> int:
             if arquivo.is_file():
                 conteudos[caminho] = arquivo.read_text(encoding="utf-8", errors="replace")
 
+    testes = {}
+    for caminho in alterados:
+        if TESTE.search(caminho):
+            arquivo = raiz / caminho
+            if arquivo.is_file():
+                testes[caminho] = arquivo.read_text(encoding="utf-8", errors="replace")
+
     na_base = {c for c in _git("-C", str(raiz), "ls-tree", "-r", "--name-only",
                                args.base).splitlines() if MIGRATION.search(c)}
 
-    achados = analisar(alterados, conteudos, na_base)
+    achados = analisar(alterados, conteudos, na_base, testes)
     if not achados:
         print(f"Verificação de PR: {len(alterados)} arquivo(s), nenhum achado.")
         return 0

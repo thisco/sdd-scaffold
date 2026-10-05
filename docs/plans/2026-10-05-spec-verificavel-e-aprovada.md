@@ -101,7 +101,7 @@ gerados não são afetados, porque não há mecanismo de atualização.
 
   O plano Tier 2 é a linha `> **Tier:** 2`; só ele confere a tabela, e só se a seção de revisão
   tiver linhas.
-- [ ] **T4 (R10).** `main()` faz `git rev-parse --verify --quiet <base>`. Em falha, imprime
+- [x] **T4 (R10).** `main()` faz `git rev-parse --verify --quiet <base>`. Em falha, imprime
   `ERRO: base <base> não encontrada` e retorna 2. Em `main()`, leia os testes alterados e passe-os
   a `analisar`.
 - [ ] **T5 (R9, R15).** Altere `qualidade.md` e `sdd-processo.md`.

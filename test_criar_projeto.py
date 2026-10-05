@@ -726,3 +726,62 @@ def test_tabela_veredito_incompleta(tmp_path):
         "fora do Tier 2 a tabela não é conferida"
     completo = parcial + "| R2 | atendido | tests/test_x.py |\n"
     assert v.analisar_rastreio(spec, completo, testes, tier2=True) == []
+
+
+def _repo_git(tmp_path, arquivos_na_feature):
+    """Repositório temporário: um commit na main e outro numa branch com `arquivos_na_feature`."""
+    repo = tmp_path / "repo-pr"
+    repo.mkdir()
+    git = ["git", "-c", "user.name=t", "-c", "user.email=t@e.com"]
+
+    def rodar(*args):
+        subprocess.run([*git, *args], cwd=repo, check=True, capture_output=True)
+
+    rodar("init", "-q", "-b", "main")
+    (repo / "LEIAME.md").write_text("x\n", encoding="utf-8")
+    rodar("add", "LEIAME.md")
+    rodar("commit", "-q", "-m", "base")
+    rodar("checkout", "-q", "-b", "feat/x")
+    for caminho, texto in arquivos_na_feature.items():
+        (repo / caminho).parent.mkdir(parents=True, exist_ok=True)
+        (repo / caminho).write_text(texto, encoding="utf-8")
+        rodar("add", caminho)
+    rodar("commit", "-q", "-m", "feature")
+    return repo
+
+
+def _rodar_verificador(destino, repo, base):
+    import sys as _sys
+    return subprocess.run(
+        [_sys.executable, str(destino / "scripts" / "verificar_pr.py"),
+         "--base", base, "--raiz", str(repo)],
+        capture_output=True, text=True)
+
+
+def test_base_inexistente_sai_com_2(tmp_path):
+    """cobre: R10. Base que não existe não pode passar em silêncio com 'nenhum arquivo'."""
+    destino = mod.gerar(nome="t4a", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    repo = _repo_git(tmp_path, {"docs/notas.md": "x\n"})
+    r = _rodar_verificador(destino, repo, "origin/inexistente")
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert "ERRO: base origin/inexistente não encontrada" in r.stdout + r.stderr
+
+    ok = _rodar_verificador(destino, repo, "main")
+    assert ok.returncode == 0, ok.stdout + ok.stderr
+
+
+def test_main_le_os_testes_alterados_do_pr(tmp_path):
+    """cobre: R6. O main() entrega ao analisar os testes alterados no PR: com `# cobre: R1`
+    no teste, o R1 não é apontado; sem o teste no PR, é."""
+    destino = mod.gerar(nome="t4b", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    spec = _spec_com_r1_r2(destino)
+    plano = _plano_citando(destino, "(R1, R2)")
+    teste = "# cobre: R1\ndef test_a():\n    pass\n"
+    repo = _repo_git(tmp_path, {_SPEC_PR: spec, _PLANO_PR: plano, "tests/test_x.py": teste})
+    r = _rodar_verificador(destino, repo, "main")
+    saida = r.stdout
+    assert "R2 não é citado em teste" in saida, saida
+    assert "R1 não é citado em teste" not in saida, saida
+    assert r.returncode == 0, "aviso não pode bloquear"
