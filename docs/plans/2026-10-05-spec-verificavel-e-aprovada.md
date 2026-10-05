@@ -83,7 +83,7 @@ gerados não são afetados, porque não há mecanismo de atualização.
 
 ## Tarefas
 
-- [ ] **T1 (R1, R2, R3).** Escreva os testes de R1 a R3 (vermelho) e depois altere o
+- [x] **T1 (R1, R2, R3).** Escreva os testes de R1 a R3 (vermelho) e depois altere o
   `MODELO-spec.md`:
   - o cabeçalho ganha `Aprovado por/em`;
   - `## Requisitos` substitui "Objetivos" e "Critérios de aceite", com o exemplo `**R1**` e o

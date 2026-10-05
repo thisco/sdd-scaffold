@@ -479,3 +479,64 @@ def test_projeto_gerado_tem_o_que_o_proprio_ci_exige(tmp_path):
                  and p.suffix in {".md", ".yml", ".yaml", ".py", ".tf", ".toml", ".json", ".txt"}
                  and marcador.search(p.read_text(encoding="utf-8", errors="replace"))]
     assert residuais == [], f"placeholders não substituídos: {residuais}"
+
+
+# --- 1.7.0: spec verificável e aprovada -------------------------------------------------
+
+import re as _re_spec  # noqa: E402
+
+_COMENTARIO_HTML = _re_spec.compile(r"<!--.*?-->", _re_spec.S)
+
+
+def _projeto(tmp_path, nome):
+    """Gera um projeto sem a skill do ciclo (sem rede) e devolve (destino, verificador)."""
+    destino = mod.gerar(nome=nome, destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    return destino, _verificador_pr(destino)
+
+
+def _secao(texto, titulo):
+    """Corpo da seção `## <titulo>` do modelo, sem comentários HTML."""
+    m = _re_spec.search(rf"^##\s+{_re_spec.escape(titulo)}\s*$", texto, _re_spec.M)
+    assert m, f"seção '{titulo}' ausente"
+    resto = texto[m.end():]
+    prox = _re_spec.search(r"^##\s", resto, _re_spec.M)
+    return _COMENTARIO_HTML.sub("", resto[: prox.start()] if prox else resto)
+
+
+def test_modelo_spec_tem_requisitos_com_criterio(tmp_path):
+    """cobre: R1. O modelo REAL tem a seção Requisitos, ao menos um exemplo **R<n>** e,
+    depois de cada exemplo, uma linha de critério. Objetivos e Critérios de aceite saem."""
+    destino = mod.gerar(nome="m1", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    spec = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    requisitos = _secao(spec, "Requisitos")
+    linhas = requisitos.splitlines()
+    exemplos = [i for i, l in enumerate(linhas) if _re_spec.match(r"^\*\*R\d+\*\*", l)]
+    assert exemplos, "a seção Requisitos não traz exemplo **R<n>**"
+    for i in exemplos:
+        fim = next((j for j in range(i + 1, len(linhas))
+                    if _re_spec.match(r"^\*\*R\d+\*\*", linhas[j])), len(linhas))
+        assert any("Critério" in l for l in linhas[i + 1: fim]), \
+            f"o exemplo da linha {i} não é seguido de uma linha Critério"
+    assert not _re_spec.search(r"^##\s+Objetivos\s*$", spec, _re_spec.M), \
+        "Objetivos deveria ter sido substituído por Requisitos"
+    assert not _re_spec.search(r"^##\s+Critérios de aceite\s*$", spec, _re_spec.M), \
+        "Critérios de aceite deveria ter sido substituído por Requisitos"
+
+
+def test_modelo_spec_tem_aprovacao_e_esclarecimentos(tmp_path):
+    """cobre: R2, R3. O cabeçalho do modelo tem Aprovado por/em vazios; o marcador
+    [ESCLARECER: …] é documentado em comentário; a seção Esclarecimentos existe."""
+    destino = mod.gerar(nome="m2", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    spec = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    for campo in ("Aprovado por", "Aprovado em"):
+        m = _re_spec.search(rf"^>\s*\*\*{campo}:\*\*(.*)$", spec, _re_spec.M)
+        assert m, f"cabeçalho sem '{campo}'"
+        assert m.group(1).strip() == "", f"'{campo}' deveria vir vazio no modelo"
+    assert "[ESCLARECER" in spec, "o marcador não está documentado"
+    assert not _re_spec.search(r"\[ESCLARECER:[^\]]*\]", _COMENTARIO_HTML.sub("", spec)), \
+        "o marcador do modelo deve ficar em comentário, senão a spec nasce com pendência"
+    assert _re_spec.search(r"^##\s+Esclarecimentos\s*$", spec, _re_spec.M), \
+        "seção Esclarecimentos ausente"

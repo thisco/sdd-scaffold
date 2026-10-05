@@ -3,6 +3,8 @@
 > **Tier:** 2 (feature/estrutural). Specs descrevem a **mudança**, não o sistema inteiro.
 > **PRD relacionado:** `docs/prd/nome.md`. O PRD diz por que e para quem; esta spec diz o quê.
 > **Status:** rascunho | em revisão | aprovada | arquivada
+> **Aprovado por:**
+> **Aprovado em:**
 > **Data:** YYYY-MM-DD
 > **Autor(es):** <nome>
 
@@ -11,11 +13,19 @@
 <!-- Por que esta mudança existe. O problema/dor concreto, com contexto suficiente para
      alguém sem histórico entender a necessidade. -->
 
-## Objetivos
+## Requisitos
 
-<!-- O que esta mudança DEVE entregar. Lista verificável. -->
+<!-- Cada requisito é uma linha `**R<n>** …` com id estável, e leva ao menos um critério de
+     aceite logo abaixo. O id liga o requisito à tarefa do plano (`(R<n>)` no fim da tarefa) e
+     ao teste (`# cobre: R<n>`). O verificador de PR confere esse rastro e avisa quando falta
+     um elo; ele confere citação, não cobertura.
+     Critério em GWT: **Dado** o contexto, **Quando** a ação, **Então** o resultado observável.
+     Alternativa em EARS: QUANDO <evento>, O SISTEMA DEVE <resposta>.
+     Aprovação: ao aprovar, troque o Status para `aprovada` e preencha `Aprovado por` e
+     `Aprovado em` no cabeçalho. -->
 
-- ...
+**R1** <comportamento observável que a mudança entrega>
+- Critério: **Dado** <contexto>, **Quando** <ação>, **Então** <resultado observável>.
 
 ## Não-objetivos
 
@@ -28,17 +38,21 @@
 <!-- Como a mudança será estruturada: componentes afetados, fluxo de dados, interfaces/contratos
      novos ou alterados, impacto arquitetural (compose ↔ IaC ↔ diagrama ↔ mapa.yml). -->
 
-## Critérios de aceite
-
-<!-- Condições objetivas e testáveis para considerar a spec atendida. Base da revisão adversarial. -->
-
-- [ ] ...
-
 ## Riscos e mitigações
 
 <!-- Riscos técnicos e de regressão que não são de segurança. -->
 
 - ...
+
+## Esclarecimentos
+
+<!-- Dúvida que não dá para resolver agora: deixe no texto o marcador `[ESCLARECER: pergunta]`
+     no ponto exato da ambiguidade. Spec aprovada, ou citada por plano, não pode ter marcador
+     aberto: o verificador de PR avisa. Ao resolver, apague o marcador e registre aqui a
+     pergunta e a resposta, uma sessão por data:
+
+     ### Sessão AAAA-MM-DD
+     - P: <pergunta> → R: <resposta> -->
 
 ## Threat-model
 
