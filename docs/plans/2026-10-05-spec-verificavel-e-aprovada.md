@@ -116,12 +116,29 @@ gerados não são afetados, porque não há mecanismo de atualização.
   - o título e o texto ficam neutros. O Kiro aparece como exemplo, e o `.kiro/permissions.yaml` é
     citado só como "se o harness for o Kiro".
 - [x] **T9 (R16).** Acrescente a entrada `[1.7.0] - 2026-10-05` no `CHANGELOG.md`.
-- [ ] **T10.** Rode `python3 -m pytest -q test_criar_projeto.py`, ou o bloco equivalente no
+- [x] **T10.** Rode `python3 -m pytest -q test_criar_projeto.py`, ou o bloco equivalente no
   `pendentes.sh`, e cole a saída em Evidências. Ruff, se estiver configurado.
 - [ ] **T11.** Revisão adversarial independente contra a spec, com a tabela por requisito.
 - [ ] **T12.** Merge e tag `v1.7.0`, só depois da tag `v3.0.0` da skill e com a ordem do dono.
 
 ## Evidências
+
+O `pytest` não estava instalado no Python do sistema. A execução usou um venv fora do
+repositório, com `pytest` e `pyyaml` (os mesmos pacotes do job de CI). Ruff não está configurado
+no repositório. Cada tarefa viu o teste novo falhar pelo motivo esperado (ausência do modelo ou
+da função) antes da implementação.
+
+```text
+$ python -m pytest -q -p no:cacheprovider test_criar_projeto.py -v
+============================= test session starts ==============================
+platform darwin -- Python 3.14.8, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/thiago/Documents/Workspace/repos/sdd-scaffold
+collected 47 items
+
+test_criar_projeto.py ...............................................    [100%]
+
+============================= 47 passed in 19.10s ==============================
+```
 
 ## Revisão adversarial: <data> — achados
 
