@@ -105,7 +105,7 @@ gerados não são afetados, porque não há mecanismo de atualização.
   `ERRO: base <base> não encontrada` e retorna 2. Em `main()`, leia os testes alterados e passe-os
   a `analisar`.
 - [x] **T5 (R9, R15).** Altere `qualidade.md` e `sdd-processo.md`.
-- [ ] **T6 (R11, R12).** Crie o symlink `template/.agents/skills` e acrescente `@AGENTS.md` ao
+- [x] **T6 (R11, R12).** Crie o symlink `template/.agents/skills` e acrescente `@AGENTS.md` ao
   `template/CLAUDE.md`. O teste gera o projeto e confere `readlink`.
 - [ ] **T7 (R13).** Em `criar_projeto.py`, crie `VERSAO_CICLO`, a opção `--versao-ciclo` e o
   `--branch` no clone. Atualize as mensagens.

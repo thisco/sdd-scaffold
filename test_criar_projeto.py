@@ -805,3 +805,23 @@ def test_sdd_processo_sem_fase_3_do_sdd(tmp_path):
     assert "Fase 3 do SDD" not in texto
     assert "(Fase 6 do SDD)" in texto
     assert "retorna à Fase 1" in texto
+
+
+def test_projeto_gerado_monta_agents_skills(tmp_path):
+    """cobre: R11. .agents/skills (Codex e Antigravity) aponta para ../skills, como os outros
+    três pontos de montagem, e o gerador preserva o link em vez de copiar."""
+    destino = mod.gerar(nome="t6a", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    link = destino / ".agents" / "skills"
+    assert link.is_symlink(), ".agents/skills virou cópia ou não existe"
+    assert os.readlink(link) == "../skills"
+    assert (link / "arquitetura-viva" / "SKILL.md").is_file(), "o link não resolve para as skills"
+
+
+def test_claude_md_importa_agents(tmp_path):
+    """cobre: R12. O CLAUDE.md importa a constituição com @AGENTS.md e segue sem regra própria."""
+    destino = mod.gerar(nome="t6b", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    linhas = _texto_do_template(destino, "CLAUDE.md").splitlines()
+    assert "@AGENTS.md" in linhas, "falta a linha @AGENTS.md"
+    assert len([l for l in linhas if l.strip()]) <= 5, "o CLAUDE.md deve ser só um ponteiro"
