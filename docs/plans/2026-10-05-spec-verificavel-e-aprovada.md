@@ -119,7 +119,7 @@ gerados não são afetados, porque não há mecanismo de atualização.
 - [x] **T10.** Rode `python3 -m pytest -q test_criar_projeto.py`, ou o bloco equivalente no
   `pendentes.sh`, e cole a saída em Evidências. Ruff, se estiver configurado.
 - [x] **T11.** Revisão adversarial independente contra a spec, com a tabela por requisito.
-- [ ] **T12.** Merge e tag `v1.7.0`, só depois da tag `v3.0.0` da skill e com a ordem do dono.
+- [x] **T12.** Merge e tag `v1.7.0`, só depois da tag `v3.0.0` da skill e com a ordem do dono.
 
 ## Evidências
 
