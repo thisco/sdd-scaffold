@@ -140,6 +140,30 @@ test_criar_projeto.py ...............................................    [100%]
 ============================= 47 passed in 19.10s ==============================
 ```
 
+### Correções da revisão
+
+| Achado | Teste que o cobre |
+|---|---|
+| 1. "quando" em prosa não é critério | `test_quando_em_prosa_nao_conta_como_criterio` (R4) |
+| 2. marcador em código inline ou cercado | `test_marcador_em_codigo_nao_conta` (R3) |
+| 3. spec aprovada sem R<n> válido; `**R1:**` e `- **R2**` passam a contar | `test_aprovada_sem_requisitos_validos_avisa` (R8) |
+| 4. tarefas sob `###` | `test_tarefas_sob_subtitulo_contam` (R6) |
+| 5. marcador só com artefato novo | `test_marcador_em_spec_formato_161_nao_avisa` (R7) |
+| 6. `aprovada (data)` e `aprovada.` | `test_status_aprovada_com_texto_depois_e_reconhecido` (R2) |
+| 7. R<n> em bloco de código | `test_requisito_em_bloco_de_codigo_nao_conta` (R4) |
+| 8. falha no clone da tag avisa em stderr | `test_falha_no_clone_da_tag_avisa_em_stderr` (R13) |
+
+Os oito testes falharam antes da correção (8 failed, 47 passed) e passam depois.
+
+```text
+$ python -m pytest -q -p no:cacheprovider test_criar_projeto.py
+...............................................................          [100%]
+55 passed in 21.08s
+
+$ python3 template/scripts/verificar_pr.py --base main --raiz .
+Verificação de PR: 13 arquivo(s), nenhum achado.
+```
+
 ## Revisão adversarial: 2026-10-05 — achados
 
 Revisor independente, sessão nova, modelo de raciocínio potente, contra a spec. Suíte rodada:
