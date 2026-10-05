@@ -66,9 +66,13 @@ PERGUNTA = re.compile(r"\?\s*$")
 
 # Spec verificável: requisito `**R<n>** texto`, status, aprovação e marcador de dúvida.
 # Texto só de placeholder (`<...>`, `...`) não é requisito: é o modelo intocado.
-REQUISITO = re.compile(r"^\*\*R(\d+)\*\*[ \t]*(.*)$", re.M)
+# Aceita `**R1** texto`, `**R1:** texto` e `- **R1** texto`.
+REQUISITO = re.compile(r"^[ \t]*(?:[-*][ \t]+)?\*\*R(\d+)(?::\*\*|\*\*:?)[ \t]*(.*)$", re.M)
+CODIGO_CERCADO = re.compile(r"^[ \t]*(```|~~~).*?^[ \t]*\1[ \t]*$", re.M | re.S)
+CODIGO_INLINE = re.compile(r"`[^`\n]*`")
 PLACEHOLDER = re.compile(r"^(<[^>]*>|\.\.\.|…)?$")
 STATUS = re.compile(r"^>?\s*\*\*Status:\*\*[ \t]*(.*)$", re.M | re.I)
+STATUS_APROVADA = re.compile(r"aprovada\b", re.I)
 APROVADO_POR = re.compile(r"^>?\s*\*\*Aprovado por:\*\*[ \t]*(.*)$", re.M | re.I)
 MARCADOR = re.compile(r"\[ESCLARECER:[^\]]*\]")
 CITACAO_TAREFA = re.compile(r"\(R\d+(?:, ?R\d+)*\)")
@@ -77,7 +81,11 @@ FUNCAO_TESTE = re.compile(r"def (test_\w+)")
 NUMERO_R = re.compile(r"R(\d+)")
 TIER2 = re.compile(r"^>?\s*\*\*Tier:\*\*\s*2\b", re.M)
 LINHA_VEREDITO = re.compile(r"^\|\s*R(\d+)\s*\|", re.M)
-CRITERIO = re.compile(r"crit[ée]rio|\bDado\b.*\bQuando\b|\bQUANDO\b", re.I)
+# Critério de aceite: a linha `Critério`, a sequência Dado…Quando…Então ou o EARS em caixa
+# alta. Sem re.I: um "quando" na prosa do requisito não é critério.
+CRITERIO = re.compile(
+    r"^[ \t]*(?:[-*][ \t]+)?Crit[ée]rio\b|\bDado\b.*?\bQuando\b.*?\bEntão\b|"
+    r"\bQUANDO\b.*?\bDEVE\b", re.M | re.S)
 
 
 def secao_preenchida(texto: str, *titulos: str) -> bool:
@@ -203,13 +211,38 @@ def analisar(alterados: list[str], conteudos: dict[str, str],
     return achados
 
 
+def _sem_codigo(texto: str) -> str:
+    """Remove comentários, blocos cercados e code spans: o que sobra é o texto da spec.
+
+    Um marcador ou um `**R<n>**` citado como exemplo dentro de código não é conteúdo.
+    """
+    texto = COMENTARIO.sub("", texto)
+    texto = CODIGO_CERCADO.sub("", texto)
+    return CODIGO_INLINE.sub("", texto)
+
+
+def _aprovada(texto: str) -> bool:
+    """Status `aprovada`, com texto depois permitido (`aprovada (2026-10-05)`).
+
+    A comparação é pelo começo do valor: o modelo lista as quatro opções na mesma linha,
+    começando por `rascunho`, e não pode passar por aprovado.
+    """
+    status = STATUS.search(texto)
+    return bool(status) and bool(STATUS_APROVADA.match(status.group(1).strip()))
+
+
+def _artefato_novo(texto: str) -> bool:
+    """A spec adotou o formato novo: tem requisito R<n> válido ou a linha `Aprovado por` (R7)."""
+    return bool(requisitos(texto)) or bool(APROVADO_POR.search(texto))
+
+
 def requisitos(spec: str) -> dict[int, str]:
     """Requisitos `**R<n>**` da spec, com o bloco de texto de cada um.
 
     O bloco vai da linha do requisito até o próximo requisito ou título. Comentário
     HTML sai antes, e requisito só de placeholder não conta: é o modelo intocado.
     """
-    texto = COMENTARIO.sub("", spec)
+    texto = _sem_codigo(spec)
     marcas = list(REQUISITO.finditer(texto))
     blocos: dict[int, str] = {}
     for i, m in enumerate(marcas):
@@ -224,33 +257,36 @@ def requisitos(spec: str) -> dict[int, str]:
 
 
 def checar_aprovacao(spec: str) -> list[Achado]:
-    """Spec com Status `aprovada` precisa dizer quem aprovou.
+    """Spec com Status `aprovada` precisa dizer quem aprovou e ter requisitos válidos.
 
     Só dispara com o artefato novo presente (R7): a linha `Aprovado por` no cabeçalho
-    ou ao menos um requisito R<n>. O status é comparado por igualdade, porque o modelo
-    lista as quatro opções na mesma linha e não pode passar por aprovado.
+    ou ao menos um requisito R<n>.
     """
-    texto = COMENTARIO.sub("", spec)
-    status = STATUS.search(texto)
-    if not status or status.group(1).strip().lower() != "aprovada":
+    texto = _sem_codigo(spec)
+    if not _aprovada(texto) or not _artefato_novo(texto):
         return []
+    achados: list[Achado] = []
     por = APROVADO_POR.search(texto)
-    if not por and not requisitos(spec):
-        return []
-    if por and por.group(1).strip():
-        return []
-    return [Achado(False, (
-        "spec com Status aprovada e aprovação sem registro: preencha `Aprovado por` e "
-        "`Aprovado em` no cabeçalho."
-    ))]
+    if not por or not por.group(1).strip():
+        achados.append(Achado(False, (
+            "spec com Status aprovada e aprovação sem registro: preencha `Aprovado por` e "
+            "`Aprovado em` no cabeçalho."
+        )))
+    if not requisitos(spec):
+        achados.append(Achado(False, (
+            "spec aprovada sem requisitos R<n> válidos: escreva linhas `**R1** …` com texto "
+            "(placeholder, bloco de código e comentário não contam)."
+        )))
+    return achados
 
 
 def checar_marcadores(spec: str, citada_por_plano: bool) -> list[Achado]:
-    """Marcador `[ESCLARECER: …]` aberto, fora de comentário, não passa para a implementação."""
-    texto = COMENTARIO.sub("", spec)
-    status = STATUS.search(texto)
-    aprovada = bool(status) and status.group(1).strip().lower() == "aprovada"
-    if not (aprovada or citada_por_plano):
+    """Marcador `[ESCLARECER: …]` aberto, fora de comentário e de código, não segue adiante.
+
+    Só dispara com o artefato novo presente, como `checar_aprovacao` (R7).
+    """
+    texto = _sem_codigo(spec)
+    if not (_aprovada(texto) or citada_por_plano) or not _artefato_novo(texto):
         return []
     abertos = MARCADOR.findall(texto)
     if not abertos:
@@ -274,9 +310,10 @@ def _corpo_da_secao(texto: str, titulo: str) -> str:
     """Corpo das seções cujo título contém `titulo`, sem comentários HTML."""
     texto = COMENTARIO.sub("", texto)
     corpos = []
-    for m in re.finditer(rf"^#{{1,6}}\s*.*?{re.escape(titulo)}.*?$", texto, re.I | re.M):
+    for m in re.finditer(rf"^(#{{1,6}})\s*.*?{re.escape(titulo)}.*?$", texto, re.I | re.M):
         resto = texto[m.end():]
-        proximo = re.search(r"^#{1,6}\s", resto, re.M)
+        # Subtítulos mais fundos (`###` dentro de `##`) continuam sendo da seção.
+        proximo = re.search(rf"^#{{1,{len(m.group(1))}}}\s", resto, re.M)
         corpos.append(resto[: proximo.start()] if proximo else resto)
     return "\n".join(corpos)
 

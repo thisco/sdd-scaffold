@@ -11,6 +11,7 @@ import argparse
 import datetime as dt
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -50,9 +51,17 @@ def instalar_skill_do_ciclo(alvo: Path, origem: str, versao: str = VERSAO_CICLO)
             capture_output=True, text=True,
         )
         if r.returncode != 0 or not (clone / "SKILL.md").is_file():
+            erro = (r.stderr or "").strip() or "o clone não trouxe um SKILL.md"
+            print(
+                f"AVISO: a skill do ciclo não foi instalada (origem {origem}, "
+                f"versão {versao or 'branch padrão'}).\n{erro}\n"
+                'Se a tag não existe nessa origem, use --versao-ciclo "" para a branch padrão '
+                "ou --versao-ciclo <tag existente>.",
+                file=sys.stderr)
             (alvo / "skills" / "SKILL-CICLO-AUSENTE.md").write_text(
                 "# A skill do ciclo SDD não foi instalada\n\n"
-                f"Origem tentada: `{origem}`\n\n"
+                f"Origem tentada: `{origem}` (versão: `{versao or 'branch padrão'}`)\n\n"
+                f"Erro do git:\n\n```text\n{erro}\n```\n\n"
                 "A geração seguiu sem ela, porque a skill é um acréscimo e não um\n"
                 "pré-requisito. Para instalar depois:\n\n"
                 "```bash\n"

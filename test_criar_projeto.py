@@ -615,16 +615,22 @@ def test_requisito_sem_criterio_avisa(tmp_path):
     assert not any("R1" in m for m in msgs), msgs
 
 
-def test_spec_formato_161_sem_achados_novos(tmp_path):
-    """cobre: R7. Spec com Objetivos, sem R<n> nem Aprovado por: nenhum achado novo."""
-    destino, v = _projeto(tmp_path, "t2e")
-    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+def _spec_formato_161(modelo):
+    """Deriva do modelo real uma spec aprovada no formato 1.6.1: Objetivos, sem R<n>."""
     antiga = _re_spec.sub(r"^> \*\*Aprovado (por|em):\*\*.*\n", "", modelo, flags=_re_spec.M)
     inicio, fim = antiga.index("## Requisitos"), antiga.index("## Não-objetivos")
     antiga = antiga[:inicio] + "## Objetivos\n\n- Entregar a coisa.\n\n" + antiga[fim:]
     inicio, fim = antiga.index("## Esclarecimentos"), antiga.index("## Threat-model")
     antiga = _aprovada(antiga[:inicio] + antiga[fim:])
     assert "**R" not in antiga and "Aprovado por" not in antiga
+    return antiga
+
+
+def test_spec_formato_161_sem_achados_novos(tmp_path):
+    """cobre: R7. Spec com Objetivos, sem R<n> nem Aprovado por: nenhum achado novo."""
+    destino, v = _projeto(tmp_path, "t2e")
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    antiga = _spec_formato_161(modelo)
     assert _avisos(v, antiga) == []
 
 
@@ -911,3 +917,121 @@ def test_changelog_tem_entrada_170():
     assert m, "entrada [1.7.0] - 2026-10-05 ausente"
     for secao in ("Adicionado", "Modificado", "Corrigido"):
         assert f"### {secao}" in m.group(1), f"1.7.0 sem a seção {secao}"
+
+
+# --- achados da revisão adversarial -----------------------------------------------------
+
+_CRIT = "- Critério: **Dado** x, **Quando** y, **Então** z.\n"
+
+
+def _spec_com_requisitos(modelo, bloco):
+    """Troca o bloco de Requisitos do modelo real por `bloco`."""
+    return modelo.replace(modelo[modelo.index("**R1**"):modelo.index("## Não-objetivos")],
+                          bloco + "\n")
+
+
+def test_quando_em_prosa_nao_conta_como_criterio(tmp_path):
+    """cobre: R4. 'quando' na descrição do requisito não é critério de aceite."""
+    destino, v = _projeto(tmp_path, "r1a")
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    spec = _spec_com_requisitos(modelo, "**R1** O sistema avisa quando a base falta.\n")
+    assert any("R1" in m and "critério" in m for m in _avisos(v, spec))
+    ok = _spec_com_requisitos(modelo, "**R1** O sistema avisa.\n" + _CRIT)
+    assert not any("critério" in m for m in _avisos(v, ok))
+    ears = _spec_com_requisitos(
+        modelo, "**R1** X.\n- QUANDO a base falta, O SISTEMA DEVE avisar.\n")
+    assert not any("critério" in m for m in _avisos(v, ears))
+
+
+def test_marcador_em_codigo_nao_conta(tmp_path):
+    """cobre: R3. Marcador em code span ou bloco cercado é citação, não pendência; a spec
+    desta própria branch cita o marcador em código e não pode gerar o aviso."""
+    destino, v = _projeto(tmp_path, "r2a")
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    base = _aprovada(modelo, por="thiago")
+    for texto in ("O marcador `[ESCLARECER: x?]` é citado.",
+                  "```\n[ESCLARECER: x?]\n```"):
+        spec = base.replace("## Motivação\n", f"## Motivação\n\n{texto}\n")
+        assert not any("ESCLARECER" in m for m in _avisos(v, spec)), texto
+    propria = (Path(__file__).resolve().parent / "docs" / "specs"
+               / "2026-10-05-spec-verificavel-e-aprovada.md").read_text(encoding="utf-8")
+    assert v.checar_marcadores(propria, citada_por_plano=True) == []
+
+
+def test_aprovada_sem_requisitos_validos_avisa(tmp_path):
+    """cobre: R8. Spec aprovada com cabeçalho novo e nenhum R<n> válido não pode escapar de
+    todas as checagens. `**R1:**` e `- **R2**` contam como requisito."""
+    destino, v = _projeto(tmp_path, "r3a")
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    base = _aprovada(modelo, por="thiago")
+    assert any("sem requisitos" in m for m in _avisos(v, base)), "placeholder passou"
+    sem_id = _spec_com_requisitos(modelo, "O sistema exporta.\n")
+    assert any("sem requisitos" in m for m in _avisos(v, _aprovada(sem_id, por="thiago")))
+    for bloco in ("**R1:** O sistema exporta.\n" + _CRIT,
+                  "- **R2** O sistema exporta.\n" + _CRIT):
+        valida = _aprovada(_spec_com_requisitos(modelo, bloco), por="thiago")
+        assert not any("sem requisitos" in m for m in _avisos(v, valida)), bloco
+        assert v.requisitos(valida), bloco
+    assert not any("sem requisitos" in m for m in _avisos(v, modelo)), \
+        "o modelo intocado (rascunho) não pode avisar"
+
+
+def test_tarefas_sob_subtitulo_contam(tmp_path):
+    """cobre: R6. Tarefas agrupadas sob `###` continuam sendo da seção Tarefas."""
+    destino, v = _projeto(tmp_path, "r4a")
+    spec = _spec_com_r1_r2(destino)
+    plano = _plano_citando(destino, "(R1)").replace(
+        "## Tarefas\n", "## Tarefas\n\n### Fase A\n\n- [ ] Outra coisa (R2)\n", 1)
+    testes = {"tests/test_x.py": "# cobre: R1, R2\n"}
+    assert v.analisar_rastreio(spec, plano, testes, tier2=False) == []
+
+
+def test_marcador_em_spec_formato_161_nao_avisa(tmp_path):
+    """cobre: R7. Sem R<n> nem Aprovado por, o marcador não gera achado novo."""
+    destino, v = _projeto(tmp_path, "r5a")
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    antiga = _spec_formato_161(modelo).replace("## Motivação\n",
+                                               "## Motivação\n\n[ESCLARECER: x?]\n")
+    assert _avisos(v, antiga) == []
+
+
+def test_status_aprovada_com_texto_depois_e_reconhecido(tmp_path):
+    """cobre: R2. `aprovada (data)` e `aprovada.` também são aprovada."""
+    destino, v = _projeto(tmp_path, "r6a")
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    linha = "> **Status:** rascunho | em revisão | aprovada | arquivada"
+    for valor in ("aprovada (2026-10-05)", "aprovada.", "Aprovada"):
+        spec = modelo.replace(linha, f"> **Status:** {valor}")
+        assert any("aprovação sem registro" in m for m in _avisos(v, spec)), valor
+
+
+def test_requisito_em_bloco_de_codigo_nao_conta(tmp_path):
+    """cobre: R4. `**R<n>**` dentro de bloco cercado é exemplo, não requisito."""
+    destino, v = _projeto(tmp_path, "r7a")
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    bloco = ("**R1** O sistema exporta.\n" + _CRIT +
+             "\nExemplo:\n\n```\n**R9** exemplo sem critério\n```\n")
+    spec = _spec_com_requisitos(modelo, bloco)
+    assert sorted(v.requisitos(spec)) == [1]
+    assert not any("R9" in m for m in _avisos(v, spec))
+
+
+def test_falha_no_clone_da_tag_avisa_em_stderr(tmp_path, monkeypatch, capsys):
+    """cobre: R13. Clone da tag que falha não pode passar em silêncio: stderr traz o erro do
+    git e a sugestão --versao-ciclo "", e o SKILL-CICLO-AUSENTE.md guarda o erro."""
+    real = subprocess.run
+
+    def duble(cmd, *a, **kw):
+        if cmd[:2] == ["git", "clone"]:
+            return subprocess.CompletedProcess(cmd, 128, "",
+                                               "fatal: Remote branch v3.0.0 not found")
+        return real(cmd, *a, **kw)
+
+    monkeypatch.setattr(mod.subprocess, "run", duble)
+    destino = mod.gerar(nome="r8a", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt")
+    err = capsys.readouterr().err
+    assert "fatal: Remote branch v3.0.0 not found" in err
+    assert '--versao-ciclo ""' in err
+    aviso = (destino / "skills" / "SKILL-CICLO-AUSENTE.md").read_text(encoding="utf-8")
+    assert "fatal: Remote branch v3.0.0 not found" in aviso
