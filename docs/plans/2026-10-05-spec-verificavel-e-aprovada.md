@@ -140,7 +140,51 @@ test_criar_projeto.py ...............................................    [100%]
 ============================= 47 passed in 19.10s ==============================
 ```
 
-## Revisão adversarial: <data> — achados
+## Revisão adversarial: 2026-10-05 — achados
+
+Revisor independente, sessão nova, modelo de raciocínio potente, contra a spec. Suíte rodada:
+47 passed. Verificador rodado na própria branch (`--base main`).
 
 | R | veredito | evidência |
 |---|---|---|
+| R1 | atendido | MODELO-spec.md:16,27-28 |
+| R2 | atendido | MODELO-spec.md:6-7; verificar_pr.py:226-245 |
+| R3 | parcial | verificar_pr.py:73,255; falso positivo com código inline (achado 2) |
+| R4 | parcial | verificar_pr.py:80; "quando" em prosa mascara a falta de critério (achado 1) |
+| R5 | atendido | MODELO-plano.md:48,65 |
+| R6 | atendido | verificar_pr.py:310-341; mensagem "citado em teste" (L330) |
+| R7 | atendido | verificar_pr.py:238,318; ressalva no achado 5 |
+| R8 | atendido | test_criar_projeto.py:632; brecha no achado 3 |
+| R9 | atendido | qualidade.md:24-33 |
+| R10 | atendido | verificar_pr.py:355-361; saída 2 testada; qualidade.yml:116 com fetch-depth 0 |
+| R11 | atendido | template/.agents/skills -> ../skills; test:811 |
+| R12 | atendido | template/CLAUDE.md:6 |
+| R13 | atendido | criar_projeto.py:25,45-49; test:863 com tag real em origem local |
+| R14 | atendido | README.md:213,231 |
+| R15 | atendido | sdd-processo.md:52 |
+| R16 | atendido | CHANGELOG.md:6-45 |
+
+Achados e tratamento:
+
+1. **Médio**, `verificar_pr.py:80`. Com `re.I`, qualquer "quando" na prosa conta como critério.
+   Tratamento: aceitar só a linha `Critério`, a sequência Dado…Quando…Então ou o EARS em caixa
+   alta.
+2. **Médio**, `verificar_pr.py:73/250`. Marcador em código inline conta como aberto, e a própria
+   spec dispara o aviso. Tratamento: tirar code spans e blocos de código antes da busca.
+3. **Médio**, `verificar_pr.py:70/220/238`. Spec aprovada só com `**R1** <...>`, ou com
+   `**R1:**`, ou com `- **R2**`, desliga todas as checagens. Tratamento: avisar "spec aprovada sem
+   requisitos R<n>" quando o cabeçalho novo existe e não sobra nenhum R válido.
+4. **Baixo**, `verificar_pr.py:291`. Tarefas sob `###` ficam fora do corpo de "Tarefas".
+   Tratamento: incluir os subtítulos na seção.
+5. **Baixo**, `verificar_pr.py:248-256`. O aviso de marcador dispara em spec no formato 1.6.1,
+   contra a letra do R7. Tratamento: exigir o artefato novo.
+6. **Baixo**, `verificar_pr.py:235`. `Aprovada (data)` e `aprovada.` escapam do aviso. Tratamento:
+   aceitar texto depois de `aprovada`.
+7. **Baixo**, `verificar_pr.py:213`. Um R<n> dentro de bloco de código conta como requisito.
+   Tratamento: remover os blocos antes da busca.
+8. **Médio**, `criar_projeto.py:52/153`. Se o clone da tag falha, o gerador diz "✔ Projeto
+   criado" sem avisar. Tratamento: aviso em stderr com o erro do git e a sugestão
+   `--versao-ciclo ""`.
+
+Veredito do revisor: vai a merge depois dos achados 1 a 3, e o 8 pode esperar. Todos os 8 serão
+tratados.
