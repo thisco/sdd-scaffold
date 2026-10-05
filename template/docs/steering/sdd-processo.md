@@ -49,7 +49,7 @@ Se qualquer resposta for "sim", aplique o ciclo completo da Arquitetura Viva e a
 
 ## Strict fallback (proibição de gambiarra)
 
-- Especificações são a fonte da verdade. Se durante a implementação (Fase 3 do SDD) um bloqueio técnico provar que o plano original ou a spec são inviáveis ou inseguros, o subagente desenvolvedor está **proibido** de inventar "gambiarras" ou seguir atalhos não documentados.
+- Especificações são a fonte da verdade. Se durante a implementação (Fase 6 do SDD) um bloqueio técnico provar que o plano original ou a spec são inviáveis ou inseguros, o subagente desenvolvedor está **proibido** de inventar "gambiarras" ou seguir atalhos não documentados.
 - A implementação deve ser abortada imediatamente e o fluxo retorna à Fase 1 (Especificação). A spec deve ser atualizada e re-aprovada pelo usuário (geralmente gerando uma ADR).
 
 ## Revisão adversarial (Tier 2)
