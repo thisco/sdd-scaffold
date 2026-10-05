@@ -41,7 +41,11 @@
 
 ## Tarefas
 
-- [ ] ...
+<!-- Cada tarefa termina com os requisitos da spec que ela entrega, no formato `(R1)` ou
+     `(R1, R2)`. O verificador de PR avisa quando um R<n> da spec não aparece em nenhuma
+     tarefa, e quando uma tarefa cita um R<n> que a spec não tem. -->
+
+- [ ] <descrição da tarefa> (R1)
 - [ ] Atualizar `CHANGELOG.md` (Keep a Changelog, versão incrementada) antes do merge.
 - [ ] Colar evidências (testes/lint) antes de concluir.
 
@@ -53,4 +57,10 @@
 
 ## Revisão adversarial: <data> — achados
 
-<!-- Tier 2: preenchido pelo revisor independente que confere a implementação CONTRA a spec. -->
+<!-- Tier 2: preenchido pelo revisor independente que confere a implementação CONTRA a spec.
+     Uma linha por requisito da spec, com o veredito (atendido, parcial ou não atendido) e a
+     evidência que o sustenta (teste, trecho, saída de comando). O verificador de PR avisa
+     quando a tabela tem linhas e falta algum R<n>. -->
+
+| R | veredito | evidência |
+|---|---|---|

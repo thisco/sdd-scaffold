@@ -94,7 +94,7 @@ gerados não são afetados, porque não há mecanismo de atualização.
 - [x] **T2 (R2, R3, R4, R7, R8).** Implemente `checar_aprovacao`, `checar_marcadores` e
   `checar_criterios` e chame as três em `analisar`. Ative por presença: só dispara com R<n> ou
   com `Aprovado por`. Remova os comentários antes de analisar (`COMENTARIO` já existe).
-- [ ] **T3 (R5, R6).** Altere o `MODELO-plano.md` e implemente `analisar_rastreio`:
+- [x] **T3 (R5, R6).** Altere o `MODELO-plano.md` e implemente `analisar_rastreio`:
   - o regex de requisito é `^\*\*R(\d+)\*\*`;
   - a tarefa cita `\(R\d+(?:, ?R\d+)*\)`;
   - o teste cita `\bR(\d+)\b`, contando só depois de `cobre:` ou no nome da função `test_`.

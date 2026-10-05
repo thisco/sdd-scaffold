@@ -60,6 +60,7 @@ RESIDUO = re.compile(r"^[\s\-*>#]*(\.\.\.|…|TODO|TBD|N/?A)?[\s\-*>#]*$", re.I)
 # O modelo lista as cinco perguntas em prosa numerada: se "há linha não vazia"
 # bastasse, o modelo intocado passaria por estar preenchido.
 CHECKBOX_VAZIO = re.compile(r"^\s*[-*]\s*\[\s*\]")
+CHECKBOX_ITEM = re.compile(r"^\s*[-*]\s*\[[ xX]\]")
 PERGUNTA = re.compile(r"\?\s*$")
 
 # Spec verificável: requisito `**R<n>** texto`, status, aprovação e marcador de dúvida.
@@ -69,6 +70,12 @@ PLACEHOLDER = re.compile(r"^(<[^>]*>|\.\.\.|…)?$")
 STATUS = re.compile(r"^>?\s*\*\*Status:\*\*[ \t]*(.*)$", re.M | re.I)
 APROVADO_POR = re.compile(r"^>?\s*\*\*Aprovado por:\*\*[ \t]*(.*)$", re.M | re.I)
 MARCADOR = re.compile(r"\[ESCLARECER:[^\]]*\]")
+CITACAO_TAREFA = re.compile(r"\(R\d+(?:, ?R\d+)*\)")
+CITACAO_TESTE = re.compile(r"cobre:\s*(R\d+(?:[ ,]+R\d+)*)", re.I)
+FUNCAO_TESTE = re.compile(r"def (test_\w+)")
+NUMERO_R = re.compile(r"R(\d+)")
+TIER2 = re.compile(r"^>?\s*\*\*Tier:\*\*\s*2\b", re.M)
+LINHA_VEREDITO = re.compile(r"^\|\s*R(\d+)\s*\|", re.M)
 CRITERIO = re.compile(r"crit[ée]rio|\bDado\b.*\bQuando\b|\bQUANDO\b", re.I)
 
 
@@ -137,6 +144,13 @@ def analisar(alterados: list[str], conteudos: dict[str, str],
         for a in (checar_aprovacao(spec) + checar_marcadores(spec, citada)
                   + checar_criterios(spec)):
             achados.append(Achado(a.bloqueia, f"{s}: {a.mensagem}"))
+
+    if planos:
+        texto_planos = "\n\n".join(conteudos.get(p, "") for p in planos)
+        tier2 = any(TIER2.search(COMENTARIO.sub("", conteudos.get(p, ""))) for p in planos)
+        for s in specs:
+            for a in analisar_rastreio(conteudos.get(s, ""), texto_planos, testes or {}, tier2):
+                achados.append(Achado(a.bloqueia, f"{s}: {a.mensagem}"))
 
     toca_sensivel = [c for c in alterados if SENSIVEL.search(c)]
     if toca_sensivel:
@@ -253,6 +267,77 @@ def checar_criterios(spec: str) -> list[Achado]:
         f"R{n} sem critério de aceite: acrescente uma linha `Critério` com "
         "Dado/Quando/Então (ou QUANDO … O SISTEMA DEVE …)."
     )) for n in sorted(sem)]
+
+
+def _corpo_da_secao(texto: str, titulo: str) -> str:
+    """Corpo das seções cujo título contém `titulo`, sem comentários HTML."""
+    texto = COMENTARIO.sub("", texto)
+    corpos = []
+    for m in re.finditer(rf"^#{{1,6}}\s*.*?{re.escape(titulo)}.*?$", texto, re.I | re.M):
+        resto = texto[m.end():]
+        proximo = re.search(r"^#{1,6}\s", resto, re.M)
+        corpos.append(resto[: proximo.start()] if proximo else resto)
+    return "\n".join(corpos)
+
+
+def _numeros(trecho: str) -> set[int]:
+    return {int(n) for n in NUMERO_R.findall(trecho)}
+
+
+def _tarefas_citam(plano: str) -> set[int]:
+    """R<n> citados nas tarefas (itens de checklist, com as linhas de continuação)."""
+    citados: set[int] = set()
+    for tarefa in re.split(r"^(?=\s*[-*]\s*\[[ xX]\])", _corpo_da_secao(plano, "Tarefas"),
+                           flags=re.M):
+        if CHECKBOX_ITEM.match(tarefa):
+            for citacao in CITACAO_TAREFA.findall(tarefa):
+                citados |= _numeros(citacao)
+    return citados
+
+
+def _testes_citam(testes: dict[str, str]) -> set[int]:
+    """R<n> citados em teste: depois de `cobre:` ou no nome de uma função `test_`."""
+    citados: set[int] = set()
+    for texto in testes.values():
+        for m in CITACAO_TESTE.findall(texto):
+            citados |= _numeros(m)
+        for nome in FUNCAO_TESTE.findall(texto):
+            citados |= {int(n) for n in re.findall(r"(?:^|_)[rR](\d+)(?=_|$)", nome)}
+    return citados
+
+
+def analisar_rastreio(spec: str, plano: str, testes: dict[str, str],
+                      tier2: bool) -> list[Achado]:
+    """Confere o elo requisito, tarefa, teste e veredito. Só avisa; nunca bloqueia.
+
+    A citação em teste prova que alguém apontou o requisito, e não que o teste o cobre:
+    por isso a mensagem diz "citado em teste". Sem R<n> na spec, nada a conferir (R7).
+    """
+    reqs = set(requisitos(spec))
+    if not reqs:
+        return []
+    achados: list[Achado] = []
+    nas_tarefas = _tarefas_citam(plano)
+    for n in sorted(reqs - nas_tarefas):
+        achados.append(Achado(False, (
+            f"R{n} da spec sem tarefa no plano: cite (R{n}) na tarefa que o entrega."
+        )))
+    for n in sorted(nas_tarefas - reqs):
+        achados.append(Achado(False, f"tarefa cita R{n}, requisito inexistente na spec."))
+    for n in sorted(reqs - _testes_citam(testes)):
+        achados.append(Achado(False, (
+            f"R{n} não é citado em teste alterado no PR: cite `# cobre: R{n}` no teste que o "
+            "exercita. A citação aponta o requisito; não prova a cobertura."
+        )))
+    if tier2:
+        linhas = {int(n) for n in LINHA_VEREDITO.findall(
+            _corpo_da_secao(plano, "Revisão adversarial"))}
+        if linhas:
+            for n in sorted(reqs - linhas):
+                achados.append(Achado(False, (
+                    f"R{n} ausente da tabela de veredito da revisão adversarial."
+                )))
+    return achados
 
 
 def _git(*args: str) -> str:

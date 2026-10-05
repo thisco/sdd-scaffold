@@ -638,3 +638,91 @@ def test_modelos_intocados_nao_aprovados_nem_rastreados(tmp_path):
                          conteudos={_SPEC_PR: spec, _PLANO_PR: plano},
                          migrations_na_base=set(), testes={})
     assert [str(a) for a in achados] == []
+
+
+def test_modelo_plano_tem_rastreio_e_tabela(tmp_path):
+    """cobre: R5. A tarefa de exemplo do modelo REAL termina com (R1), e a seção de revisão
+    adversarial traz a tabela | R | veredito | evidência |."""
+    destino = mod.gerar(nome="t3a", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=None)
+    plano = _texto_do_template(destino, "docs/plans/MODELO-plano.md")
+    tarefas = _secao(plano, "Tarefas")
+    assert any(_re_spec.match(r"^- \[ \] .*\(R1\)\s*$", l) for l in tarefas.splitlines()), \
+        "nenhuma tarefa de exemplo termina com (R1)"
+    revisao = plano[plano.index("## Revisão adversarial"):]
+    assert _re_spec.search(r"^\|\s*R\s*\|\s*veredito\s*\|\s*evidência\s*\|\s*$", revisao,
+                           _re_spec.M), "tabela de veredito ausente"
+
+
+def _spec_com_r1_r2(destino):
+    """Deriva do modelo real uma spec com R1 e R2, ambos com critério."""
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    bloco = ("**R1** O sistema exporta.\n- Critério: **Dado** x, **Quando** y, **Então** z.\n\n"
+             "**R2** O sistema valida.\n- Critério: **Dado** x, **Quando** y, **Então** z.\n\n")
+    return modelo.replace(modelo[modelo.index("**R1**"):modelo.index("## Não-objetivos")], bloco)
+
+
+def _plano_citando(destino, citacao, tier2=False):
+    """Deriva do modelo real um plano cuja tarefa de exemplo cita `citacao`."""
+    plano = _texto_do_template(destino, "docs/plans/MODELO-plano.md")
+    plano = plano.replace("(R1)", citacao)
+    if tier2:
+        plano = plano.replace("> **Tier:** 1 | 2", "> **Tier:** 2")
+        assert "> **Tier:** 2" in plano, "o modelo mudou a linha de Tier"
+    return plano
+
+
+def test_rastreio_r2_sem_tarefa_e_sem_teste(tmp_path):
+    """cobre: R6. Spec com R1 e R2, plano que cita só (R1), teste com `# cobre: R1`:
+    avisos para R2 (sem tarefa e sem teste) e nenhum para R1. Diz 'citado', nunca 'coberto'."""
+    destino, v = _projeto(tmp_path, "t3b")
+    spec = _spec_com_r1_r2(destino)
+    plano = _plano_citando(destino, "(R1)")
+    testes = {"tests/test_x.py": "# cobre: R1\ndef test_a():\n    pass\n"}
+    msgs = [a.mensagem for a in v.analisar_rastreio(spec, plano, testes, tier2=False)]
+    assert any("R2" in m and "tarefa" in m for m in msgs), msgs
+    assert any("R2" in m and "citado em teste" in m for m in msgs), msgs
+    assert not any("R1" in m for m in msgs), msgs
+    assert not any("coberto" in m.lower() for m in msgs), msgs
+
+    # a citação pelo nome da função também vale, e o aviso some
+    testes["tests/test_y.py"] = "def test_valida_r2_formato():\n    pass\n"
+    plano2 = _plano_citando(destino, "(R1, R2)")
+    assert v.analisar_rastreio(spec, plano2, testes, tier2=False) == []
+
+    # pelo analisar, com os arquivos do PR
+    achados = v.analisar(alterados=[_SPEC_PR, _PLANO_PR, "tests/test_x.py"],
+                         conteudos={_SPEC_PR: spec, _PLANO_PR: plano},
+                         migrations_na_base=set(), testes=testes)
+    assert any("R2" in a.mensagem for a in achados)
+    assert not [a for a in achados if a.bloqueia]
+
+
+def test_tarefa_cita_r_inexistente(tmp_path):
+    """cobre: R6. Tarefa que cita R<n> que a spec não tem."""
+    destino, v = _projeto(tmp_path, "t3c")
+    spec = _spec_com_r1_r2(destino)
+    plano = _plano_citando(destino, "(R1, R3)")
+    testes = {"tests/test_x.py": "# cobre: R1, R2\ndef test_a():\n    pass\n"}
+    msgs = [a.mensagem for a in v.analisar_rastreio(spec, plano, testes, tier2=False)]
+    assert any("R3" in m and "inexistente" in m for m in msgs), msgs
+
+
+def test_tabela_veredito_incompleta(tmp_path):
+    """cobre: R6. Plano Tier 2 com a tabela de veredito preenchida precisa listar todo R<n>.
+    Sem linhas na tabela, ou fora do Tier 2, não confere."""
+    destino, v = _projeto(tmp_path, "t3d")
+    spec = _spec_com_r1_r2(destino)
+    testes = {"tests/test_x.py": "# cobre: R1, R2\ndef test_a():\n    pass\n"}
+    base = _plano_citando(destino, "(R1, R2)", tier2=True)
+    parcial = base.rstrip("\n") + "\n| R1 | atendido | tests/test_x.py |\n"
+    msgs = [a.mensagem for a in v.analisar_rastreio(spec, parcial, testes, tier2=True)]
+    assert any("R2" in m and "veredito" in m for m in msgs), msgs
+    assert not any("R1" in m for m in msgs), msgs
+
+    assert v.analisar_rastreio(spec, base, testes, tier2=True) == [], \
+        "tabela sem linhas não deveria ser conferida"
+    assert v.analisar_rastreio(spec, parcial, testes, tier2=False) == [], \
+        "fora do Tier 2 a tabela não é conferida"
+    completo = parcial + "| R2 | atendido | tests/test_x.py |\n"
+    assert v.analisar_rastreio(spec, completo, testes, tier2=True) == []
