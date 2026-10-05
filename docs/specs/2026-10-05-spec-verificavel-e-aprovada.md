@@ -1,7 +1,7 @@
 # Spec: spec verificável e aprovada (sdd-scaffold 1.7.0)
 
 > **Tier:** 2 (muda os modelos de spec e plano, o verificador de PR e os pontos de montagem).
-> **Status:** aprovada
+> **Status:** arquivada
 > **Aprovado por:** thiago
 > **Aprovado em:** 2026-10-05
 > **Data:** 2026-10-05

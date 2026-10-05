@@ -118,7 +118,7 @@ gerados não são afetados, porque não há mecanismo de atualização.
 - [x] **T9 (R16).** Acrescente a entrada `[1.7.0] - 2026-10-05` no `CHANGELOG.md`.
 - [x] **T10.** Rode `python3 -m pytest -q test_criar_projeto.py`, ou o bloco equivalente no
   `pendentes.sh`, e cole a saída em Evidências. Ruff, se estiver configurado.
-- [ ] **T11.** Revisão adversarial independente contra a spec, com a tabela por requisito.
+- [x] **T11.** Revisão adversarial independente contra a spec, com a tabela por requisito.
 - [ ] **T12.** Merge e tag `v1.7.0`, só depois da tag `v3.0.0` da skill e com a ordem do dono.
 
 ## Evidências
@@ -212,3 +212,17 @@ Achados e tratamento:
 
 Veredito do revisor: vai a merge depois dos achados 1 a 3, e o 8 pode esperar. Todos os 8 serão
 tratados.
+
+Conferência das correções (mesmo revisor independente, 2026-10-05):
+
+- Os 8 achados foram resolvidos nos commits f62ee9e e 40887da. Suíte: 55 passed.
+  `verificar_pr.py --base main` na branch: nenhum achado, exit 0.
+- R3 e R4 passam a atendidos.
+- Sem regressão: a spec no formato 1.6.1 continua sem achado novo (R7), e os modelos intocados
+  só geram o aviso de evidência que já existia (R8).
+- Veredito: pode ir a merge.
+
+Limites conhecidos, para a 1.8.0:
+
+- um requisito escrito só como código inline (`**R1** \`cmd\``) some sem aviso;
+- uma linha `critério` em minúscula não é aceita e gera aviso falso.
