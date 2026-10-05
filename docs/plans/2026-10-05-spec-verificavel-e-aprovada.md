@@ -91,7 +91,7 @@ gerados não são afetados, porque não há mecanismo de atualização.
   - o marcador e `## Esclarecimentos` são explicados em comentário HTML.
 
   Pergunta e orientação ficam sempre em comentário.
-- [ ] **T2 (R2, R3, R4, R7, R8).** Implemente `checar_aprovacao`, `checar_marcadores` e
+- [x] **T2 (R2, R3, R4, R7, R8).** Implemente `checar_aprovacao`, `checar_marcadores` e
   `checar_criterios` e chame as três em `analisar`. Ative por presença: só dispara com R<n> ou
   com `Aprovado por`. Remova os comentários antes de analisar (`COMENTARIO` já existe).
 - [ ] **T3 (R5, R6).** Altere o `MODELO-plano.md` e implemente `analisar_rastreio`:

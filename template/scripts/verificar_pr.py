@@ -62,6 +62,15 @@ RESIDUO = re.compile(r"^[\s\-*>#]*(\.\.\.|…|TODO|TBD|N/?A)?[\s\-*>#]*$", re.I)
 CHECKBOX_VAZIO = re.compile(r"^\s*[-*]\s*\[\s*\]")
 PERGUNTA = re.compile(r"\?\s*$")
 
+# Spec verificável: requisito `**R<n>** texto`, status, aprovação e marcador de dúvida.
+# Texto só de placeholder (`<...>`, `...`) não é requisito: é o modelo intocado.
+REQUISITO = re.compile(r"^\*\*R(\d+)\*\*[ \t]*(.*)$", re.M)
+PLACEHOLDER = re.compile(r"^(<[^>]*>|\.\.\.|…)?$")
+STATUS = re.compile(r"^>?\s*\*\*Status:\*\*[ \t]*(.*)$", re.M | re.I)
+APROVADO_POR = re.compile(r"^>?\s*\*\*Aprovado por:\*\*[ \t]*(.*)$", re.M | re.I)
+MARCADOR = re.compile(r"\[ESCLARECER:[^\]]*\]")
+CRITERIO = re.compile(r"crit[ée]rio|\bDado\b.*\bQuando\b|\bQUANDO\b", re.I)
+
 
 def secao_preenchida(texto: str, *titulos: str) -> bool:
     """A seção existe E tem conteúdo de verdade sob o título.
@@ -101,12 +110,14 @@ class Achado:
 
 
 def analisar(alterados: list[str], conteudos: dict[str, str],
-             migrations_na_base: set[str]) -> list[Achado]:
+             migrations_na_base: set[str],
+             testes: dict[str, str] | None = None) -> list[Achado]:
     """Função pura: recebe o retrato do PR e devolve os achados.
 
     `alterados` são os caminhos tocados; `conteudos` mapeia caminho para texto
     dos arquivos de plano e spec; `migrations_na_base` são as migrations que já
-    existem no alvo do merge.
+    existem no alvo do merge; `testes` mapeia caminho para texto dos testes
+    alterados (opcional, para o rastreio de requisitos).
     """
     achados: list[Achado] = []
 
@@ -119,6 +130,13 @@ def analisar(alterados: list[str], conteudos: dict[str, str],
 
     planos = [c for c in alterados if PLANO.match(c)]
     specs = [c for c in alterados if SPEC.match(c)]
+
+    for s in specs:
+        spec = conteudos.get(s, "")
+        citada = any(s in conteudos.get(p, "") for p in planos)
+        for a in (checar_aprovacao(spec) + checar_marcadores(spec, citada)
+                  + checar_criterios(spec)):
+            achados.append(Achado(a.bloqueia, f"{s}: {a.mensagem}"))
 
     toca_sensivel = [c for c in alterados if SENSIVEL.search(c)]
     if toca_sensivel:
@@ -168,6 +186,73 @@ def analisar(alterados: list[str], conteudos: dict[str, str],
                 )))
 
     return achados
+
+
+def requisitos(spec: str) -> dict[int, str]:
+    """Requisitos `**R<n>**` da spec, com o bloco de texto de cada um.
+
+    O bloco vai da linha do requisito até o próximo requisito ou título. Comentário
+    HTML sai antes, e requisito só de placeholder não conta: é o modelo intocado.
+    """
+    texto = COMENTARIO.sub("", spec)
+    marcas = list(REQUISITO.finditer(texto))
+    blocos: dict[int, str] = {}
+    for i, m in enumerate(marcas):
+        fim = marcas[i + 1].start() if i + 1 < len(marcas) else len(texto)
+        titulo = re.search(r"^#{1,6}\s", texto[m.end():fim], re.M)
+        if titulo:
+            fim = m.end() + titulo.start()
+        if PLACEHOLDER.match(m.group(2).strip()):
+            continue
+        blocos[int(m.group(1))] = texto[m.start():fim]
+    return blocos
+
+
+def checar_aprovacao(spec: str) -> list[Achado]:
+    """Spec com Status `aprovada` precisa dizer quem aprovou.
+
+    Só dispara com o artefato novo presente (R7): a linha `Aprovado por` no cabeçalho
+    ou ao menos um requisito R<n>. O status é comparado por igualdade, porque o modelo
+    lista as quatro opções na mesma linha e não pode passar por aprovado.
+    """
+    texto = COMENTARIO.sub("", spec)
+    status = STATUS.search(texto)
+    if not status or status.group(1).strip().lower() != "aprovada":
+        return []
+    por = APROVADO_POR.search(texto)
+    if not por and not requisitos(spec):
+        return []
+    if por and por.group(1).strip():
+        return []
+    return [Achado(False, (
+        "spec com Status aprovada e aprovação sem registro: preencha `Aprovado por` e "
+        "`Aprovado em` no cabeçalho."
+    ))]
+
+
+def checar_marcadores(spec: str, citada_por_plano: bool) -> list[Achado]:
+    """Marcador `[ESCLARECER: …]` aberto, fora de comentário, não passa para a implementação."""
+    texto = COMENTARIO.sub("", spec)
+    status = STATUS.search(texto)
+    aprovada = bool(status) and status.group(1).strip().lower() == "aprovada"
+    if not (aprovada or citada_por_plano):
+        return []
+    abertos = MARCADOR.findall(texto)
+    if not abertos:
+        return []
+    return [Achado(False, (
+        f"{len(abertos)} marcador(es) [ESCLARECER] aberto(s) numa spec aprovada ou citada "
+        "por plano. Resolva, apague o marcador e registre a resposta em Esclarecimentos."
+    ))]
+
+
+def checar_criterios(spec: str) -> list[Achado]:
+    """Todo requisito R<n> traz ao menos um critério de aceite (GWT ou EARS)."""
+    sem = [n for n, bloco in requisitos(spec).items() if not CRITERIO.search(bloco)]
+    return [Achado(False, (
+        f"R{n} sem critério de aceite: acrescente uma linha `Critério` com "
+        "Dado/Quando/Então (ou QUANDO … O SISTEMA DEVE …)."
+    )) for n in sorted(sem)]
 
 
 def _git(*args: str) -> str:

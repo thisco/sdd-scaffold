@@ -540,3 +540,101 @@ def test_modelo_spec_tem_aprovacao_e_esclarecimentos(tmp_path):
         "o marcador do modelo deve ficar em comentário, senão a spec nasce com pendência"
     assert _re_spec.search(r"^##\s+Esclarecimentos\s*$", spec, _re_spec.M), \
         "seção Esclarecimentos ausente"
+
+
+_SPEC_PR = "docs/specs/2026-01-01-x.md"
+_PLANO_PR = "docs/plans/2026-01-01-x.md"
+
+
+def _aprovada(spec_modelo, por=""):
+    """Deriva do modelo REAL uma spec marcada como aprovada."""
+    spec = spec_modelo.replace("> **Status:** rascunho | em revisão | aprovada | arquivada",
+                               "> **Status:** aprovada")
+    assert "> **Status:** aprovada" in spec, "o modelo mudou a linha de Status"
+    if por:
+        spec = spec.replace("> **Aprovado por:**", f"> **Aprovado por:** {por}")
+    return spec
+
+
+def _avisos(v, spec, **extra):
+    achados = v.analisar(alterados=[_SPEC_PR, *extra.get("outros", [])],
+                         conteudos={_SPEC_PR: spec, **extra.get("conteudos", {})},
+                         migrations_na_base=set())
+    assert not [a for a in achados if a.bloqueia], "aviso de spec não pode bloquear"
+    return [a.mensagem for a in achados]
+
+
+def test_aprovada_sem_aprovador_avisa(tmp_path):
+    """cobre: R2. Status aprovada com 'Aprovado por' vazio é aprovação sem registro."""
+    destino, v = _projeto(tmp_path, "t2a")
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    assert any("aprovação sem registro" in m for m in _avisos(v, _aprovada(modelo)))
+    assert not any("aprovação" in m for m in _avisos(v, _aprovada(modelo, por="thiago")))
+
+
+def test_marcador_aberto_em_spec_aprovada_avisa(tmp_path):
+    """cobre: R3. Marcador aberto fora de comentário, em spec aprovada ou citada por plano."""
+    destino, v = _projeto(tmp_path, "t2b")
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    spec = _aprovada(modelo, por="thiago").replace(
+        "## Motivação\n", "## Motivação\n\nA chave expira em [ESCLARECER: quanto tempo?] e em "
+        "[ESCLARECER: quem renova?].\n")
+    msgs = _avisos(v, spec)
+    assert any("ESCLARECER" in m and "2" in m for m in msgs), msgs
+
+    # rascunho citado por um plano do PR também conta
+    rascunho = modelo.replace("## Motivação\n", "## Motivação\n\n[ESCLARECER: x?]\n")
+    assert not any("ESCLARECER" in m for m in _avisos(v, rascunho)), \
+        "rascunho sem plano não deveria avisar"
+    plano = f"# Plano\n\n> **Spec relacionada:** `{_SPEC_PR}`\n"
+    msgs = _avisos(v, rascunho, outros=[_PLANO_PR], conteudos={_PLANO_PR: plano})
+    assert any("ESCLARECER" in m for m in msgs), msgs
+
+
+def test_marcador_aberto_em_comentario_nao_conta(tmp_path):
+    """cobre: R3. O marcador citado em comentário (como o modelo faz) não é pendência."""
+    destino, v = _projeto(tmp_path, "t2c")
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    spec = _aprovada(modelo, por="thiago").replace(
+        "## Motivação\n", "## Motivação\n\n<!-- [ESCLARECER: x?] -->\n")
+    assert not any("ESCLARECER" in m for m in _avisos(v, spec))
+    assert not any("ESCLARECER" in m for m in _avisos(v, _aprovada(modelo, por="thiago")))
+
+
+def test_requisito_sem_criterio_avisa(tmp_path):
+    """cobre: R4. Requisito sem Critério nem Dado/Quando/Então até o próximo R."""
+    destino, v = _projeto(tmp_path, "t2d")
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    bloco = ("**R1** O sistema exporta o relatório.\n"
+             "- Critério: **Dado** um relatório, **Quando** exporta, **Então** gera o arquivo.\n\n"
+             "**R2** O sistema valida o formato.\n\n")
+    spec = modelo.replace(modelo[modelo.index("**R1**"):modelo.index("## Não-objetivos")],
+                          bloco)
+    msgs = _avisos(v, spec)
+    assert any("R2" in m and "critério" in m for m in msgs), msgs
+    assert not any("R1" in m for m in msgs), msgs
+
+
+def test_spec_formato_161_sem_achados_novos(tmp_path):
+    """cobre: R7. Spec com Objetivos, sem R<n> nem Aprovado por: nenhum achado novo."""
+    destino, v = _projeto(tmp_path, "t2e")
+    modelo = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    antiga = _re_spec.sub(r"^> \*\*Aprovado (por|em):\*\*.*\n", "", modelo, flags=_re_spec.M)
+    inicio, fim = antiga.index("## Requisitos"), antiga.index("## Não-objetivos")
+    antiga = antiga[:inicio] + "## Objetivos\n\n- Entregar a coisa.\n\n" + antiga[fim:]
+    inicio, fim = antiga.index("## Esclarecimentos"), antiga.index("## Threat-model")
+    antiga = _aprovada(antiga[:inicio] + antiga[fim:])
+    assert "**R" not in antiga and "Aprovado por" not in antiga
+    assert _avisos(v, antiga) == []
+
+
+def test_modelos_intocados_nao_aprovados_nem_rastreados(tmp_path):
+    """cobre: R8. Os modelos REAIS, lado a lado e intocados, não geram nenhum achado de
+    aprovação, marcador, critério ou rastreio (regressão da 1.6.1)."""
+    destino, v = _projeto(tmp_path, "t2f")
+    spec = _texto_do_template(destino, "docs/specs/MODELO-spec.md")
+    plano = _texto_do_template(destino, "docs/plans/MODELO-plano.md")
+    achados = v.analisar(alterados=[_SPEC_PR, _PLANO_PR],
+                         conteudos={_SPEC_PR: spec, _PLANO_PR: plano},
+                         migrations_na_base=set(), testes={})
+    assert [str(a) for a in achados] == []
