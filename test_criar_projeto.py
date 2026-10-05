@@ -378,7 +378,7 @@ def test_instala_skill_externa_a_partir_de_origem_local(tmp_path):
         _sp.run(cmd, cwd=origem, check=True, capture_output=True)
 
     destino = mod.gerar(nome="proj-skill-ext", destino=tmp_path, descricao="d", stack="s",
-                        deps="requirements.txt", origem_ciclo=str(origem))
+                        deps="requirements.txt", origem_ciclo=str(origem), versao_ciclo="")
     instalada = destino / "skills" / "sdd-lifecycle" / "SKILL.md"
     assert instalada.is_file(), "sdd-lifecycle não foi instalada"
     assert "name: sdd-lifecycle" in instalada.read_text(encoding="utf-8")
@@ -825,3 +825,63 @@ def test_claude_md_importa_agents(tmp_path):
     linhas = _texto_do_template(destino, "CLAUDE.md").splitlines()
     assert "@AGENTS.md" in linhas, "falta a linha @AGENTS.md"
     assert len([l for l in linhas if l.strip()]) <= 5, "o CLAUDE.md deve ser só um ponteiro"
+
+
+def test_clone_do_ciclo_fixa_versao(tmp_path, monkeypatch):
+    """cobre: R13. Com a origem padrão, o comando de clone fixa a tag v3.0.0. O teste troca o
+    subprocess.run por um dublê só para o clone, então não usa rede."""
+    clones = []
+    real = subprocess.run
+
+    def duble(cmd, *a, **kw):
+        if cmd[:2] == ["git", "clone"]:
+            clones.append(cmd)
+            return subprocess.CompletedProcess(cmd, 1, "", "sem rede")
+        return real(cmd, *a, **kw)
+
+    monkeypatch.setattr(mod.subprocess, "run", duble)
+    mod.gerar(nome="t7a", destino=tmp_path, descricao="d", stack="s", deps="requirements.txt")
+    assert mod.VERSAO_CICLO == "v3.0.0"
+    assert len(clones) == 1
+    cmd = clones[0]
+    assert cmd[cmd.index("--branch") + 1] == "v3.0.0", cmd
+    assert mod.ORIGEM_CICLO_PADRAO in cmd
+
+    # versão vazia usa a branch padrão da origem
+    clones.clear()
+    mod.gerar(nome="t7b", destino=tmp_path, descricao="d", stack="s", deps="requirements.txt",
+              versao_ciclo="")
+    assert "--branch" not in clones[0], clones[0]
+
+    # fallback e pontos de montagem citam .agents/skills
+    aviso = (tmp_path / "t7a" / "skills" / "SKILL-CICLO-AUSENTE.md").read_text(encoding="utf-8")
+    assert ".agents/skills" in aviso
+    assert "--branch v3.0.0" in aviso
+
+
+def test_instala_a_tag_pedida_e_nao_o_head_da_origem(tmp_path):
+    """cobre: R13. Origem local com a tag v3.0.0 e um commit posterior: o projeto recebe o
+    conteúdo da tag, e a procedência registra a versão."""
+    origem = tmp_path / "origem-tag"
+    origem.mkdir()
+    git = ["git", "-c", "user.name=t", "-c", "user.email=t@e.com"]
+
+    def rodar(*args):
+        subprocess.run([*git, *args], cwd=origem, check=True, capture_output=True)
+
+    rodar("init", "-q", "-b", "main")
+    (origem / "SKILL.md").write_text("---\nname: sdd-lifecycle\n---\nversao da tag\n",
+                                     encoding="utf-8")
+    rodar("add", "SKILL.md")
+    rodar("commit", "-q", "-m", "v3")
+    rodar("tag", "v3.0.0")
+    (origem / "SKILL.md").write_text("---\nname: sdd-lifecycle\n---\nposterior a tag\n",
+                                     encoding="utf-8")
+    rodar("commit", "-q", "-am", "depois")
+
+    destino = mod.gerar(nome="t7c", destino=tmp_path, descricao="d", stack="s",
+                        deps="requirements.txt", origem_ciclo=str(origem))
+    skill = (destino / "skills" / "sdd-lifecycle" / "SKILL.md").read_text(encoding="utf-8")
+    assert "versao da tag" in skill and "posterior a tag" not in skill
+    assert "v3.0.0" in (destino / "skills" / "sdd-lifecycle" / "PROCEDENCIA.md").read_text(
+        encoding="utf-8")

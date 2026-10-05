@@ -20,6 +20,9 @@ TEMPLATE = Path(__file__).resolve().parent / "template"
 # em vez de ser copiada para dentro deste template. Assim existe uma fonte só, e o
 # projeto recebe a versão vigente no dia em que nasce, com a origem registrada.
 ORIGEM_CICLO_PADRAO = "https://github.com/thisco/sdd-lifecycle.git"
+# Tag da skill do ciclo que este scaffold instala. Fixar a tag evita que a `main` da skill
+# mude o projeto no dia em que ele nasce. Vazio usa a branch padrão da origem.
+VERSAO_CICLO = "v3.0.0"
 EXTENSOES_TEXTO = {".md", ".yml", ".yaml", ".py", ".tf", ".toml", ".json",
                    ".txt", ".gitignore", ".drawio", ""}
 # Artefatos de SO/cache nunca devem chegar ao projeto gerado. Atenção: `.DS_Store` tem
@@ -29,19 +32,21 @@ EXTENSOES_TEXTO = {".md", ".yml", ".yaml", ".py", ".tf", ".toml", ".json",
 IGNORAR = shutil.ignore_patterns(".DS_Store", "__pycache__", "*.pyc", ".pytest_cache")
 
 
-def instalar_skill_do_ciclo(alvo: Path, origem: str) -> bool:
+def instalar_skill_do_ciclo(alvo: Path, origem: str, versao: str = VERSAO_CICLO) -> bool:
     """Instala a skill do ciclo SDD em skills/sdd-lifecycle/.
 
     Devolve True se instalou. Falha de rede ou origem inacessível **não** aborta a
     geração: o projeto nasce sem a skill e com um arquivo explicando como instalar
     depois. Um gerador que quebra porque a rede caiu falha justamente quando alguém
-    está começando um projeto.
+    está começando um projeto. `versao` é a tag (ou branch) a clonar; vazia, usa a
+    branch padrão da origem.
     """
     destino_skill = alvo / "skills" / "sdd-lifecycle"
+    ref = ["--branch", versao] if versao else []
     with tempfile.TemporaryDirectory() as tmp:
         clone = Path(tmp) / "ciclo"
         r = subprocess.run(
-            ["git", "clone", "--depth", "1", "--quiet", origem, str(clone)],
+            ["git", "clone", "--depth", "1", "--quiet", *ref, origem, str(clone)],
             capture_output=True, text=True,
         )
         if r.returncode != 0 or not (clone / "SKILL.md").is_file():
@@ -51,13 +56,14 @@ def instalar_skill_do_ciclo(alvo: Path, origem: str) -> bool:
                 "A geração seguiu sem ela, porque a skill é um acréscimo e não um\n"
                 "pré-requisito. Para instalar depois:\n\n"
                 "```bash\n"
-                f"git clone --depth 1 {origem} /tmp/sdd-lifecycle\n"
+                f"git clone {' '.join(['--depth 1', *ref])} {origem} /tmp/sdd-lifecycle\n"
                 "cp -R /tmp/sdd-lifecycle skills/sdd-lifecycle\n"
                 "rm -rf skills/sdd-lifecycle/.git\n"
                 "```\n\n"
-                "Ela fica visível nas três ferramentas pelo mesmo ponto de montagem,\n"
-                "porque `.claude/skills`, `.codex/skills` e `.kiro/skills` apontam\n"
-                "para `skills/`. Apague este arquivo depois de instalar.\n",
+                "Ela fica visível em todas as ferramentas pelo mesmo ponto de montagem,\n"
+                "porque `.claude/skills`, `.codex/skills`, `.kiro/skills` e\n"
+                "`.agents/skills` apontam para `skills/`. Apague este arquivo depois de\n"
+                "instalar.\n",
                 encoding="utf-8")
             return False
 
@@ -69,6 +75,7 @@ def instalar_skill_do_ciclo(alvo: Path, origem: str) -> bool:
         (destino_skill / "PROCEDENCIA.md").write_text(
             "# Procedência desta skill\n\n"
             f"- **Origem:** `{origem}`\n"
+            f"- **Versão pedida:** `{versao or 'branch padrão'}`\n"
             f"- **Revisão instalada:** `{revisao or 'desconhecida'}`\n"
             f"- **Instalada em:** {dt.date.today().isoformat()}\n\n"
             "Esta skill não nasceu aqui: ela foi instalada na geração do projeto a partir\n"
@@ -80,15 +87,16 @@ def instalar_skill_do_ciclo(alvo: Path, origem: str) -> bool:
 
 
 def gerar(nome: str, destino: Path | str, descricao: str, stack: str, deps: str,
-          origem_ciclo: str | None = ORIGEM_CICLO_PADRAO) -> Path:
+          origem_ciclo: str | None = ORIGEM_CICLO_PADRAO,
+          versao_ciclo: str = VERSAO_CICLO) -> Path:
     destino = Path(destino).expanduser().resolve()
     alvo = destino / nome
     if alvo.exists():
         raise FileExistsError(f"destino já existe: {alvo}")
 
-    # symlinks=True preserva os pontos de montagem de skills (.claude/skills, .codex/skills
-    # e .kiro/skills apontam para skills/). Sem isso o copytree resolve cada link e o projeto
-    # nasce com quatro cópias da mesma skill, que divergem no primeiro ajuste.
+    # symlinks=True preserva os pontos de montagem de skills (.claude/skills, .codex/skills,
+    # .kiro/skills e .agents/skills apontam para skills/). Sem isso o copytree resolve cada
+    # link e o projeto nasce com quatro cópias da mesma skill, que divergem no primeiro ajuste.
     shutil.copytree(TEMPLATE, alvo, ignore=IGNORAR, symlinks=True)
 
     trocas = {
@@ -112,7 +120,7 @@ def gerar(nome: str, destino: Path | str, descricao: str, stack: str, deps: str,
         arquivo.write_text(texto, encoding="utf-8")
 
     if origem_ciclo:
-        instalar_skill_do_ciclo(alvo, origem_ciclo)
+        instalar_skill_do_ciclo(alvo, origem_ciclo, versao_ciclo)
 
     subprocess.run(["git", "init", "-b", "main"], cwd=alvo, check=True, capture_output=True)
     subprocess.run(["git", "add", "-A"], cwd=alvo, check=True, capture_output=True)
@@ -132,12 +140,16 @@ def main() -> int:
     parser.add_argument("--deps", default="requirements.txt")
     parser.add_argument("--origem-ciclo", default=ORIGEM_CICLO_PADRAO,
                         help="repositório ou caminho da skill do ciclo SDD")
+    parser.add_argument("--versao-ciclo", default=VERSAO_CICLO,
+                        help=f"tag da skill do ciclo (padrão {VERSAO_CICLO}); "
+                             "vazio usa a branch padrão da origem")
     parser.add_argument("--sem-skill-do-ciclo", action="store_true",
                         help="não instalar a skill do ciclo SDD")
     args = parser.parse_args()
 
     alvo = gerar(args.nome, args.destino, args.descricao, args.stack, args.deps,
-                 origem_ciclo=None if args.sem_skill_do_ciclo else args.origem_ciclo)
+                 origem_ciclo=None if args.sem_skill_do_ciclo else args.origem_ciclo,
+                 versao_ciclo=args.versao_ciclo)
     print(f"✔ Projeto criado em {alvo}")
     print("Próximos passos: revisar AGENTS.md, preencher docs/steering/, desenhar Arquitetura/arquitetura.drawio")
     return 0
