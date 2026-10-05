@@ -148,11 +148,11 @@ mantém o mecanismo.
 Análise completa em
 [`docs/plans/2026-09-29-analise-skills-mecanismos-e-constituicao.md`](docs/plans/2026-09-29-analise-skills-mecanismos-e-constituicao.md).
 
-### Um corpo de skill, três pontos de montagem
+### Um corpo de skill, quatro pontos de montagem
 
 As skills ficam em `skills/`. Cada ferramenta lê de um caminho diferente, então
-`.claude/skills`, `.codex/skills` e `.kiro/skills` são links para esse mesmo diretório. Editar
-a skill num lugar vale para os três, e não existe cópia para divergir.
+`.claude/skills`, `.codex/skills`, `.kiro/skills` e `.agents/skills` são links para esse mesmo
+diretório. Editar a skill num lugar vale para todos, e não existe cópia para divergir.
 
 Quatro skills acompanham o scaffold, e cada uma tem um mecanismo que verifica o resultado:
 
@@ -210,15 +210,74 @@ O que acontece:
 Opções: `--descricao "..."`, `--stack "Python 3.12 + FastAPI"`, `--deps requirements.txt` (default:
 `requirements.txt`). Descrição e stack não informadas ficam como `<!-- preencher -->` para completar depois.
 
+### Instalar pelo próprio agente (o agente se configura)
+
+Se você já usa um agente de código (Claude Code, Codex, Kiro, Antigravity), não precisa rodar o
+gerador na mão. Abra uma sessão **na pasta onde quer criar o projeto** e cole o prompt abaixo. O
+próprio agente clona o scaffold, roda o gerador (que instala a `sdd-lifecycle`), confere os
+pontos de montagem, lê a constituição e conduz a configuração pós-geração, perguntando só o
+mínimo. Como cada harness lê `AGENTS.md` e o seu ponto de montagem de skills (o Kiro, por
+exemplo, lê `.kiro/skills`), a governança fica ativa assim que o projeto nasce.
+
+```text
+Quero instanciar o sdd-scaffold neste ambiente e deixar o projeto pronto para trabalhar. Siga
+esta ordem e pare para eu confirmar antes de qualquer passo destrutivo.
+
+1. Pergunte o nome do projeto, a stack (ex.: "Python 3.12 + FastAPI") e uma descrição de uma
+   linha. Se eu não souber a stack ou a descrição, siga com os defaults e deixe os marcadores
+   <!-- preencher --> para depois.
+
+2. Clone o scaffold num diretório temporário e rode o gerador a partir dele (nada global):
+     git clone --depth 1 --branch v1.7.0 https://github.com/thisco/sdd-scaffold.git /tmp/sdd-scaffold
+     python3 /tmp/sdd-scaffold/criar_projeto.py --nome <nome> --destino . \
+       --stack "<stack>" --descricao "<descricao>"
+   O gerador copia o template, substitui os placeholders, instala a skill sdd-lifecycle em
+   skills/sdd-lifecycle/ a partir da tag fixada no repositório dela, roda git init e faz o
+   primeiro commit.
+
+3. Entre na pasta <nome> criada e confirme a instalação:
+   - skills/sdd-lifecycle/SKILL.md existe. Se em vez disso houver skills/SKILL-CICLO-AUSENTE.md,
+     a origem estava inacessível: me avise e siga sem a skill do ciclo.
+   - .claude/skills, .codex/skills, .kiro/skills e .agents/skills apontam para skills/ (cada
+     harness enxerga as skills por um desses pontos de montagem; .agents/skills serve ao Codex e
+     ao Antigravity).
+   - AGENTS.md tem nome, stack e descrição já substituídos (é a constituição, lida a cada turno).
+
+4. Leia AGENTS.md por completo e a skill sdd-lifecycle. A partir daqui, respeite a governança do
+   projeto: não edite a constituição (docs/constituicao/), as ADRs nem Arquitetura/mapa.yml por
+   conta própria. O hook de .claude/settings.json (Claude Code) e, se o harness for o Kiro,
+   o .kiro/permissions.yaml pedem confirmação ou negam esses caminhos.
+
+5. Conduza a configuração pós-geração comigo: percorra os marcadores <!-- preencher --> e me
+   pergunte o que faltar para completá-los em docs/steering/ (comandos de teste e lint, mecanismo
+   de auth, escopos de commit, ordem de rebuild) e também em pyproject.toml, tests/README.md e
+   docs/prd/MODELO-prd.md (e em .kiro/permissions.yaml, se o harness for o Kiro).
+
+6. Valide o que der para validar sozinho e me mostre a saída:
+     python3 scripts/verificar_constituicao.py --raiz .
+     pip install pyyaml && python3 scripts/verificar_drift_arquitetura.py
+   No primeiro run, com "componentes: []" vazio, o drift check aponta o módulo de exemplo como
+   "não mapeado" — isso é esperado e não bloqueia.
+
+7. Ao final, liste o que ainda depende de mim: desenhar Arquitetura/arquitetura.drawio, mapear
+   Arquitetura/mapa.yml e escrever o PRD antes da primeira spec de Tier 2.
+```
+
+Para gerar o projeto numa pasta diferente da atual, troque `--destino .` pelo caminho desejado. A
+skill do ciclo vem da tag fixada no gerador (`v3.0.0`); para outra versão, passe `--versao-ciclo
+<tag>`, e para instalá-la de um diretório local, `--origem-ciclo <url ou caminho>`. Para pular a
+skill, `--sem-skill-do-ciclo`.
+
 ### A skill do ciclo é instalada, não copiada
 
 A [`sdd-lifecycle`](https://github.com/thisco/sdd-lifecycle) conduz o ciclo SDD e vive em
 repositório próprio. O gerador a instala em `skills/sdd-lifecycle/` e registra a origem e a
-revisão em `PROCEDENCIA.md`, de modo que exista uma fonte só e o projeto receba a versão vigente
-no dia em que nasce.
+revisão em `PROCEDENCIA.md`, de modo que exista uma fonte só. A versão é a tag `v3.0.0`, fixada
+no gerador, e não a `main` da skill: o projeto nasce igual em qualquer dia.
 
 ```bash
 --origem-ciclo <url ou caminho>   # outra origem, inclusive um diretório local
+--versao-ciclo <tag>              # outra tag; vazio usa a branch padrão da origem
 --sem-skill-do-ciclo              # não instalar
 ```
 
@@ -257,13 +316,13 @@ meu-projeto/
 ├── infra/
 │   ├── local/docker-compose.yml    # ambiente local (esqueleto)
 │   └── cloud/                       # OpenTofu: main.tf, versions.tf, modules/exemplo-servico/
-├── skills/                              # corpo único, montado nas três ferramentas
+├── skills/                              # corpo único, montado nas ferramentas
 │   ├── arquitetura-viva/SKILL.md
 │   ├── threat-model/SKILL.md
 │   ├── migrations-reversiveis/SKILL.md
 │   ├── estados-de-interface/SKILL.md
 │   └── sdd-lifecycle/                   # instalada na geração, com PROCEDENCIA.md
-├── .claude/skills · .codex/skills · .kiro/skills   # pontos de montagem para skills/
+├── .claude/skills · .codex/skills · .kiro/skills · .agents/skills   # pontos de montagem para skills/
 ├── .claude/settings.json                # hook que protege a governança
 ├── .codex/requirements.toml             # fixa git_attribution desligado
 ├── .kiro/permissions.yaml               # deny/ask por caminho sensível

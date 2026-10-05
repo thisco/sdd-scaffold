@@ -885,3 +885,19 @@ def test_instala_a_tag_pedida_e_nao_o_head_da_origem(tmp_path):
     assert "versao da tag" in skill and "posterior a tag" not in skill
     assert "v3.0.0" in (destino / "skills" / "sdd-lifecycle" / "PROCEDENCIA.md").read_text(
         encoding="utf-8")
+
+
+def test_readme_prompt_fixa_versao():
+    """cobre: R14. O prompt de 'Instalar pelo próprio agente' clona a tag v1.7.0, confere
+    .agents/skills e não faz clone raso sem tag."""
+    readme = (Path(__file__).resolve().parent / "README.md").read_text(encoding="utf-8")
+    m = _re_spec.search(r"^### Instalar pelo próprio agente.*?^```text\n(.*?)^```", readme,
+                        _re_spec.M | _re_spec.S)
+    assert m, "seção 'Instalar pelo próprio agente' com o prompt em bloco text ausente"
+    prompt = m.group(1)
+    assert "--branch v1.7.0" in prompt
+    assert ".agents/skills" in prompt
+    clones = [l for l in prompt.splitlines() if "git clone" in l]
+    assert clones and all("--branch" in l for l in clones), \
+        f"clone sem tag no prompt: {clones}"
+    assert "se o harness for o Kiro" in prompt, ".kiro/permissions.yaml deve ser condicional"

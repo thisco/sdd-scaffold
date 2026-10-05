@@ -109,7 +109,7 @@ gerados não são afetados, porque não há mecanismo de atualização.
   `template/CLAUDE.md`. O teste gera o projeto e confere `readlink`.
 - [x] **T7 (R13).** Em `criar_projeto.py`, crie `VERSAO_CICLO`, a opção `--versao-ciclo` e o
   `--branch` no clone. Atualize as mensagens.
-- [ ] **T8 (R14).** Transforme o diff não commitado do README na seção "Instalar pelo próprio
+- [x] **T8 (R14).** Transforme o diff não commitado do README na seção "Instalar pelo próprio
   agente":
   - clone `git clone --depth 1 --branch v1.7.0 …`;
   - o passo 3 confere `.agents/skills` junto dos demais pontos;
