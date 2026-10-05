@@ -1,9 +1,9 @@
 # Spec: spec verificável e aprovada (sdd-scaffold 1.7.0)
 
 > **Tier:** 2 (muda os modelos de spec e plano, o verificador de PR e os pontos de montagem).
-> **Status:** em revisão
-> **Aprovado por:**
-> **Aprovado em:**
+> **Status:** aprovada
+> **Aprovado por:** thiago
+> **Aprovado em:** 2026-10-05
 > **Data:** 2026-10-05
 > **Origem:** análise da prática SDD (curadoria A.5 do portal de padrões de engenharia), §7
 > "Release 1", e os achados da curadoria da A.5. Companheira: spec do sdd-lifecycle 3.0.0.
