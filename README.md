@@ -234,7 +234,7 @@ esta ordem e pare para eu confirmar antes de qualquer passo destrutivo.
    <!-- preencher --> para depois.
 
 2. Clone o scaffold num diretório temporário e rode o gerador a partir dele (nada global):
-     git clone --depth 1 --branch v1.7.0 https://github.com/thisco/sdd-scaffold.git /tmp/sdd-scaffold
+     git clone --depth 1 --branch v1.7.1 https://github.com/thisco/sdd-scaffold.git /tmp/sdd-scaffold
      python3 /tmp/sdd-scaffold/criar_projeto.py --nome <nome> --destino . \
        --stack "<stack>" --descricao "<descricao>"
    O gerador copia o template, substitui os placeholders, instala a skill sdd-lifecycle em
