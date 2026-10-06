@@ -1035,3 +1035,110 @@ def test_falha_no_clone_da_tag_avisa_em_stderr(tmp_path, monkeypatch, capsys):
     assert '--versao-ciclo ""' in err
     aviso = (destino / "skills" / "SKILL-CICLO-AUSENTE.md").read_text(encoding="utf-8")
     assert "fatal: Remote branch v3.0.0 not found" in aviso
+
+
+# --- 1.7.1: correções de governança apontadas pela revisão de segurança automática ---
+
+def _gerar_171(tmp_path, nome):
+    return mod.gerar(nome=nome, destino=tmp_path, descricao="d", stack="s",
+                     deps="requirements.txt", origem_ciclo=None)
+
+
+def test_renomear_e_editar_migration_aplicada_bloqueia(tmp_path):
+    """cobre: 1.7.1 (a). `git diff --name-only` com detecção de rename lista só o nome novo,
+    e a migration antiga some da lista: a edição escapava da trava."""
+    destino = _gerar_171(tmp_path, "t171a")
+    repo = tmp_path / "repo-rename"
+    repo.mkdir()
+    git = ["git", "-c", "user.name=t", "-c", "user.email=t@e.com"]
+
+    def rodar(*args):
+        subprocess.run([*git, *args], cwd=repo, check=True, capture_output=True)
+
+    rodar("init", "-q", "-b", "main")
+    (repo / "migrations").mkdir()
+    corpo = "".join(f"-- linha {i} da migration\n" for i in range(40))
+    (repo / "migrations" / "001_a.sql").write_text(corpo, encoding="utf-8")
+    rodar("add", ".")
+    rodar("commit", "-q", "-m", "base")
+    rodar("checkout", "-q", "-b", "feat/x")
+    rodar("mv", "migrations/001_a.sql", "migrations/001_b.sql")
+    (repo / "migrations" / "001_b.sql").write_text(corpo + "-- alterada\n", encoding="utf-8")
+    rodar("add", ".")
+    rodar("commit", "-q", "-m", "renomeia e edita")
+    r = _rodar_verificador(destino, repo, "main")
+    assert r.returncode == 1, f"rename + edição de migration aplicada passou: {r.stdout}"
+    assert "BLOQUEIA" in r.stdout
+
+
+def test_comando_do_hook_usa_claude_project_dir(tmp_path):
+    """cobre: 1.7.1 (b). Comando relativo falha inerte quando a sessão faz `cd`."""
+    import json as _json
+    destino = _gerar_171(tmp_path, "t171b")
+    cfg = _json.loads((destino / ".claude" / "settings.json").read_text(encoding="utf-8"))
+    comandos = [h["command"] for g in cfg["hooks"]["PreToolUse"] for h in g["hooks"]]
+    assert comandos == ['python3 "$CLAUDE_PROJECT_DIR/scripts/proteger_governanca.py"']
+
+
+def test_hook_protege_scripts_verificadores_settings_local_e_github(tmp_path):
+    """cobre: 1.7.1 (c). Caminho absoluto dentro do projeto, que é o que o harness envia."""
+    import json as _json
+    destino = _gerar_171(tmp_path, "t171c")
+    script = destino / "scripts" / "proteger_governanca.py"
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(destino)}
+
+    def decidir(caminho):
+        evento = _json.dumps({"tool_name": "Write", "tool_input": {"file_path": caminho}})
+        return subprocess.run(["python3", str(script)], input=evento, capture_output=True,
+                              text=True, env=env).stdout.strip()
+
+    for protegido in ("scripts/verificar_pr.py", "scripts/verificar_outro.py",
+                      "scripts/proteger_governanca.py", ".claude/settings.local.json",
+                      ".github/workflows/qualidade.yml", ".github/CODEOWNERS",
+                      ".github/dependabot.yml"):
+        assert decidir(str(destino / protegido)), f"{protegido} passou livre"
+    for livre in ("docs/steering/seguranca.md", "src/app.py"):
+        assert not decidir(str(destino / livre)), f"{livre} não deveria ser protegido"
+
+
+def test_todo_edit_protegido_tem_write_correspondente(tmp_path):
+    """cobre: 1.7.1 (d). Write cria ou sobrescreve o arquivo inteiro: sem regra, contorna o Edit."""
+    import json as _json
+    destino = _gerar_171(tmp_path, "t171d")
+    perm = _json.loads((destino / ".claude" / "settings.json")
+                       .read_text(encoding="utf-8"))["permissions"]
+    for lista in ("ask", "deny"):
+        regras = set(perm[lista])
+        for regra in regras:
+            if regra.startswith("Edit("):
+                assert "Write(" + regra[5:] in regras, f"{regra} em {lista} sem Write"
+
+
+def test_hook_ignora_caixa_do_nome(tmp_path):
+    """cobre: 1.7.1 (e). Em sistema de arquivos insensível a caixa, agents.md é o AGENTS.md."""
+    import json as _json
+    destino = _gerar_171(tmp_path, "t171e")
+    script = destino / "scripts" / "proteger_governanca.py"
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(destino)}
+
+    def decidir(caminho):
+        evento = _json.dumps({"tool_name": "Edit", "tool_input": {"file_path": caminho}})
+        return subprocess.run(["python3", str(script)], input=evento, capture_output=True,
+                              text=True, env=env).stdout.strip()
+
+    def decisao(caminho):
+        saida = decidir(caminho)
+        return _json.loads(saida)["hookSpecificOutput"]["permissionDecision"] if saida else None
+
+    esperado = decisao(str(destino / "AGENTS.md"))
+    assert esperado == "ask"
+    for variante in ("agents.md", "Agents.md", "DOCS/ADR/0001-x.md"):
+        assert decisao(str(destino / variante)) == esperado, f"{variante} passou livre"
+
+
+def test_readme_declara_limite_da_trava_de_pr():
+    """cobre: 1.7.1 (f). O job roda o script do próprio PR: a trava vale contra descuido."""
+    readme = (Path(__file__).resolve().parent / "README.md").read_text(encoding="utf-8")
+    assert "script do próprio PR" in readme
+    assert "má-fé" in readme and "CODEOWNERS" in readme
+    assert "git show origin/<alvo>:scripts/verificar_pr.py" in readme

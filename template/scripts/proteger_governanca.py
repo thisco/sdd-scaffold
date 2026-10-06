@@ -33,6 +33,9 @@ PROTEGIDOS = [
     "docs/adr/*",
     "Arquitetura/mapa.yml",
     ".github/workflows/*",
+    ".github/*",
+    "scripts/verificar_*.py",
+    ".claude/settings.local.json",
 ]
 
 FERRAMENTAS_DE_ESCRITA = {"Edit", "Write", "NotebookEdit", "MultiEdit"}
@@ -59,7 +62,9 @@ def relativo_ao_projeto(caminho: str) -> str:
 def caminho_protegido(caminho: str) -> str | None:
     normalizado = relativo_ao_projeto(caminho)
     for padrao in PROTEGIDOS:
-        if fnmatch.fnmatch(normalizado, padrao) or normalizado == padrao:
+        # Caixa ignorada: em sistema de arquivos insensível a caixa (macOS, Windows),
+        # `agents.md` é o `AGENTS.md`, e o fnmatch do POSIX distinguiria os dois.
+        if fnmatch.fnmatchcase(normalizado.lower(), padrao.lower()):
             return padrao
     return None
 
