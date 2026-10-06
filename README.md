@@ -91,7 +91,7 @@ time a contorná-lo.
 no PR altera também o que o avalia. A trava vale, portanto, contra descuido e não contra má-fé.
 Duas mitigações: CODEOWNERS e proteção de branch nos caminhos `scripts/` e `.github/`, ou rodar o
 script da base em vez do script do PR:
-`git show origin/<alvo>:scripts/verificar_pr.py | python3 - --base origin/<alvo>`.
+`git show origin/<alvo>:scripts/verificar_pr.py | python3 -I - --base origin/<alvo>`.
 
 **Limite dos controles por ferramenta.** Os controles de escrita são proteção contra descuido, não
 contra má-fé:
@@ -108,6 +108,13 @@ contra má-fé:
 - O `.kiro/permissions.yaml` cobre apenas `fs.write`, a escrita de arquivo. Comando de shell do
   Kiro não passa por ele, e a correspondência por caixa do nome (`agents.md`) depende de como o
   Kiro compara caminhos, que o scaffold não controla.
+- Módulo plantado em `scripts/` (`json.py`, `re.py`) sequestraria o hook e os verificadores sem
+  editar nenhum deles, porque `python3 scripts/x.py` põe `scripts/` no início do caminho de
+  importação. O hook e os jobs do CI rodam com `python3 -I` (modo isolado), que não faz isso.
+- Arquivos que executam código no CI (`conftest.py`, `pyproject.toml`, `requirements*.txt`,
+  `Makefile`, `tests/`) não são protegidos: são o trabalho normal do agente, e travá-los travaria
+  o uso. O job de testes roda esse código por definição; o job de governança não, porque roda só
+  os scripts isolados. Quem revisa o PR precisa olhar essas mudanças.
 - Quem consegue editar `.claude/settings.local.json` fora do agente, ou rodar o harness com as
   permissões desligadas, desliga tudo. Para valer contra má-fé, a proteção tem de estar fora do
   repositório do projeto: CODEOWNERS, proteção de branch e política do harness gerida pela
