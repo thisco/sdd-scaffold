@@ -1077,7 +1077,9 @@ def test_comando_do_hook_usa_claude_project_dir(tmp_path):
     destino = _gerar_171(tmp_path, "t171b")
     cfg = _json.loads((destino / ".claude" / "settings.json").read_text(encoding="utf-8"))
     comandos = [h["command"] for g in cfg["hooks"]["PreToolUse"] for h in g["hooks"]]
-    assert comandos == ['python3 "$CLAUDE_PROJECT_DIR/scripts/proteger_governanca.py"']
+    assert len(comandos) == 1
+    assert comandos[0].startswith('python3 "$CLAUDE_PROJECT_DIR/scripts/proteger_governanca.py"')
+    assert "exit 2" in comandos[0], "hook que quebra deve bloquear, não liberar"
 
 
 def test_hook_protege_scripts_verificadores_settings_local_e_github(tmp_path):
@@ -1142,3 +1144,133 @@ def test_readme_declara_limite_da_trava_de_pr():
     assert "script do próprio PR" in readme
     assert "má-fé" in readme and "CODEOWNERS" in readme
     assert "git show origin/<alvo>:scripts/verificar_pr.py" in readme
+
+
+def _hook_decisao(destino, evento_json, ferramenta_env=True):
+    """Roda o hook do projeto gerado e devolve (código de saída, decisão ou None)."""
+    import json as _json
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(destino)}
+    r = subprocess.run(["python3", str(destino / "scripts" / "proteger_governanca.py")],
+                       input=evento_json, capture_output=True, text=True, env=env)
+    saida = r.stdout.strip()
+    decisao = _json.loads(saida)["hookSpecificOutput"]["permissionDecision"] if saida else None
+    return r.returncode, decisao
+
+
+def _kiro_cobre(regras, caminho):
+    """Devolve o efeito da regra fs.write do Kiro que cobre o caminho (deny vence ask)."""
+    import fnmatch as _fn
+    import re as _re
+    efeitos = set()
+    for r in regras:
+        if r["capability"] != "fs.write":
+            continue
+        for padrao in r["match"]:
+            rx = _re.escape(padrao).replace(r"\*\*", ".*").replace(r"\*", "[^/]*")
+            if _re.fullmatch(rx, caminho):
+                efeitos.add(r["effect"])
+    return "deny" if "deny" in efeitos else "ask" if "ask" in efeitos else None
+
+
+def test_kiro_cobre_o_que_o_hook_e_o_settings_protegem(tmp_path):
+    """cobre: 1.7.1 (g). O permissions.yaml do Kiro tinha menos cobertura que o settings.json:
+    deixava o próprio settings, o permissions.yaml, os scripts verificadores e .github/** livres."""
+    import json as _json
+    import yaml
+    destino = _gerar_171(tmp_path, "t171g")
+    regras = yaml.safe_load((destino / ".kiro" / "permissions.yaml")
+                            .read_text(encoding="utf-8"))["rules"]
+    perm = _json.loads((destino / ".claude" / "settings.json")
+                       .read_text(encoding="utf-8"))["permissions"]
+    # tudo que o settings nega, o Kiro nega
+    for regra in perm["deny"]:
+        if regra.startswith("Edit("):
+            caminho = regra[5:-1].replace("**", "x/y").replace("*", "x")
+            assert _kiro_cobre(regras, caminho) == "deny", f"Kiro não nega {caminho}"
+    # tudo que o settings pede aprovação, o Kiro cobre (ask ou deny)
+    for regra in perm["ask"]:
+        if regra.startswith("Edit("):
+            caminho = regra[5:-1].replace("**", "x/y").replace("*", "x")
+            assert _kiro_cobre(regras, caminho), f"Kiro não cobre {caminho}"
+    # tudo que o hook protege, o Kiro cobre
+    fonte = (destino / "scripts" / "proteger_governanca.py").read_text(encoding="utf-8")
+    import re as _re
+    padroes = _re.findall(r'^\s+"([^"]+)",$',
+                          fonte.split("PROTEGIDOS = [", 1)[1].split("]", 1)[0], _re.M)
+    assert len(padroes) >= 14
+    for p in padroes:
+        caminho = p.replace("*", "x")
+        assert _kiro_cobre(regras, caminho), f"Kiro não cobre {caminho} (hook protege {p})"
+
+
+def _casa_regra_bash(regra, comando):
+    """Casamento aproximado de regra Bash(...): `prefixo:*` é prefixo, `*` é curinga."""
+    import fnmatch as _fn
+    assert regra.startswith("Bash(") and regra.endswith(")")
+    interno = regra[5:-1]
+    if interno.endswith(":*"):
+        interno = interno[:-2] + "*"
+    return _fn.fnmatchcase(comando, interno)
+
+
+def test_bash_que_escreve_em_protegido_pede_aprovacao(tmp_path):
+    """cobre: 1.7.1 (h). O hook só vê Edit/Write; redirecionamento, cp, mv e interpretador
+    em linha escreviam em protegido sem passar por ele. Regras ask de Bash cobrem o direto;
+    o indireto (script, heredoc, make) é limite documentado no README."""
+    import json as _json
+    destino = _gerar_171(tmp_path, "t171h")
+    ask = _json.loads((destino / ".claude" / "settings.json")
+                      .read_text(encoding="utf-8"))["permissions"]["ask"]
+
+    def pede(cmd):
+        return any(_casa_regra_bash(r, cmd) for r in ask if r.startswith("Bash("))
+
+    protegidos = ("AGENTS.md", "CLAUDE.md", "GEMINI.md", "docs/adr/0001-x.md",
+                  "docs/constituicao/padrao-v1.0.md", "Arquitetura/mapa.yml",
+                  "Arquitetura/c4.drawio", ".claude/settings.json",
+                  ".claude/settings.local.json", ".kiro/permissions.yaml",
+                  "scripts/proteger_governanca.py", "scripts/verificar_pr.py",
+                  ".github/workflows/qualidade.yml", ".github/CODEOWNERS", ".codex/config.toml")
+    for p in protegidos:
+        for cmd in (f"echo x > {p}", f"echo x >> {p}", f"cat a.txt >{p}",
+                    f"cp /tmp/x {p}", f"mv /tmp/x {p}", f"git checkout main -- {p}",
+                    f"git restore --source=HEAD~3 {p}"):
+            assert pede(cmd), f"sem ask para: {cmd}"
+    for cmd in ("python3 -c 'open(\"AGENTS.md\",\"w\").write(\"x\")'", "python -c 'pass'",
+                "git apply x.patch", "perl -pi -e 's/a/b/' AGENTS.md", "sed -i '' s/a/b/ AGENTS.md"):
+        assert pede(cmd), f"sem ask para: {cmd}"
+    # o uso normal não trava
+    for cmd in ("git status", "git diff scripts/verificar_pr.py", "cat AGENTS.md",
+                "python3 scripts/verificar_pr.py --base origin/main", "pytest -q 2> erro.log",
+                "git checkout -b feat/x", "git checkout main", "mv src/a.py src/b.py",
+                "cp src/a.py src/b.py", "echo ok > /tmp/saida.txt", "ls .github", "git add AGENTS.md"):
+        assert not pede(cmd), f"ask indevido para: {cmd}"
+
+
+def test_hook_falha_fechado(tmp_path):
+    """cobre: 1.7.1 (i). Entrada ilegível ou ferramenta de escrita sem caminho não pode virar
+    permissão tácita, e o comando do hook bloqueia (exit 2) se o script quebrar ou sumir."""
+    import json as _json
+    destino = _gerar_171(tmp_path, "t171i")
+    assert _hook_decisao(destino, "isto não é json")[1] == "ask"
+    assert _hook_decisao(destino, _json.dumps({"tool_name": "Write", "tool_input": {}}))[1] == "ask"
+    assert _hook_decisao(destino, _json.dumps({"tool_name": "Read", "tool_input": {}}))[1] is None
+    # caminho do notebook também é caminho
+    ev = _json.dumps({"tool_name": "NotebookEdit", "tool_input": {"notebook_path": "AGENTS.md"}})
+    assert _hook_decisao(destino, ev)[1] == "ask"
+    # script quebrado ou ausente: o comando registrado sai com 2, que bloqueia a ferramenta
+    cfg = _json.loads((destino / ".claude" / "settings.json").read_text(encoding="utf-8"))
+    comando = cfg["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+    env = {**os.environ, "CLAUDE_PROJECT_DIR": str(destino)}
+    (destino / "scripts" / "proteger_governanca.py").unlink()
+    r = subprocess.run(["sh", "-c", comando], input="{}", capture_output=True, text=True, env=env)
+    assert r.returncode == 2, f"hook ausente não bloqueou: {r.returncode}"
+
+
+def test_readme_documenta_limites_do_hook_e_do_kiro():
+    """cobre: 1.7.1 (j). O limite estrutural precisa estar escrito, na seção da trava de PR."""
+    readme = (Path(__file__).resolve().parent / "README.md").read_text(encoding="utf-8")
+    assert "Limite dos controles por ferramenta" in readme
+    assert "descuido, não" in readme
+    for termo in ("heredoc", "python3 script.py", "fs.write", "caixa"):
+        assert termo in readme, f"README não menciona o limite: {termo}"
