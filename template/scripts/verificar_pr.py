@@ -398,7 +398,7 @@ def main() -> int:
         return 2
 
     alterados = [c for c in _git("-C", str(raiz), "diff", "--name-only",
-                                 f"{args.base}...HEAD").splitlines() if c]
+                                 "--no-renames", f"{args.base}...HEAD").splitlines() if c]
     if not alterados:
         print("Nenhum arquivo alterado em relação a", args.base)
         return 0
