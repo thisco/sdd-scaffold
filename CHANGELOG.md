@@ -3,6 +3,29 @@
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) ·
 Versionamento: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.7.1] - 2026-10-06
+
+Correções de governança. A revisão de segurança automática da 1.7.0 apontou os itens abaixo.
+
+### Corrigido
+
+- **Migration renomeada e editada passava pela trava.** O `verificar_pr.py` lista os nomes com
+  `git diff --name-only --no-renames`, e a migration antiga deixa de sumir da lista.
+- **O hook falhava inerte quando a sessão fazia `cd`.** O comando em `.claude/settings.json`
+  passa a usar `python3 "$CLAUDE_PROJECT_DIR/scripts/proteger_governanca.py"`.
+- **Protegidos a mais no hook:** `scripts/verificar_*.py`, `.claude/settings.local.json` e
+  `.github/**` (workflows, CODEOWNERS, dependabot). `docs/steering` continua livre: o fluxo
+  pós-geração manda o agente preenchê-lo.
+- **`Write` sem regra.** Toda regra `ask` ou `deny` de `Edit(...)` ganha o `Write(...)` equivalente.
+- **Caixa do nome.** O hook compara sem distinguir maiúsculas (`agents.md` é o `AGENTS.md` em
+  macOS e Windows).
+
+### Modificado
+
+- O README declara o limite da trava de PR (o job roda o script do próprio PR, então ela vale
+  contra descuido e não contra má-fé) e as mitigações: CODEOWNERS e proteção de branch em
+  `scripts/` e `.github/`, ou rodar o script da base.
+
 ## [1.7.0] - 2026-10-05
 
 Spec verificável e aprovada. A spec passa a ter requisitos com id, e o verificador de PR

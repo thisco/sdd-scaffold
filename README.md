@@ -87,6 +87,12 @@ quem aplicou a anterior, é inequívoco e difícil de desfazer. Os outros três 
 envolvem julgamento sobre o que é suficiente, e um portão que reprova por julgamento ensina o
 time a contorná-lo.
 
+**Limite da trava de PR.** O job roda o script do próprio PR: quem altera `scripts/verificar_pr.py`
+no PR altera também o que o avalia. A trava vale, portanto, contra descuido e não contra má-fé.
+Duas mitigações: CODEOWNERS e proteção de branch nos caminhos `scripts/` e `.github/`, ou rodar o
+script da base em vez do script do PR:
+`git show origin/<alvo>:scripts/verificar_pr.py | python3 - --base origin/<alvo>`.
+
 Saber em qual das duas camadas cada regra está é o que separa governança de intenção.
 
 ## As quatro camadas de governança
