@@ -8,15 +8,27 @@
       "Edit(docs/constituicao/**)",
       "Edit(Arquitetura/mapa.yml)",
       "Write(AGENTS.md)",
+      "Write(CLAUDE.md)",
+      "Write(GEMINI.md)",
+      "Write(docs/adr/**)",
       "Write(docs/constituicao/**)",
+      "Write(Arquitetura/mapa.yml)",
       "Bash(sed -i:*)",
       "Bash(tee:*)"
     ],
     "deny": [
       "Edit(.claude/settings.json)",
+      "Edit(.claude/settings.local.json)",
       "Edit(.kiro/permissions.yaml)",
       "Edit(scripts/proteger_governanca.py)",
-      "Edit(.github/workflows/**)"
+      "Edit(scripts/verificar_*.py)",
+      "Edit(.github/**)",
+      "Write(.claude/settings.json)",
+      "Write(.claude/settings.local.json)",
+      "Write(.kiro/permissions.yaml)",
+      "Write(scripts/proteger_governanca.py)",
+      "Write(scripts/verificar_*.py)",
+      "Write(.github/**)"
     ]
   },
   "hooks": {
@@ -26,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 scripts/proteger_governanca.py"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/proteger_governanca.py\""
           }
         ]
       }
