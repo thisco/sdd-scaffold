@@ -7,6 +7,9 @@
 # sem que uma pessoa peça. As regras abaixo tornam isso mecânico, em vez de depender de
 # obediência a uma instrução de texto.
 #
+# Limite: estas regras cobrem escrita de arquivo (fs.write). Escrita feita por comando de
+# shell não passa por elas, e a correspondência de caminho por caixa depende do Kiro.
+#
 # O Codex chega ao mesmo resultado por sandbox de sistema operacional, deixando .git e os
 # diretórios de configuração somente-leitura no modo de escrita restrita.
 version: 1
@@ -30,8 +33,23 @@ rules:
     effect: ask
 
   - capability: fs.write
-    match: [".git/**", ".github/workflows/**"]
+    match: [".git/**", ".github/**"]
     effect: deny
+
+  # As próprias travas: quem reescreve o hook, o settings ou este arquivo desliga a governança.
+  # Mesma lista que o .claude/settings.json nega para o Claude Code.
+  - capability: fs.write
+    match:
+      - ".claude/settings.json"
+      - ".claude/settings.local.json"
+      - ".kiro/permissions.yaml"
+      - "scripts/proteger_governanca.py"
+      - "scripts/verificar_*.py"
+    effect: deny
+
+  - capability: fs.write
+    match: [".codex/config.toml"]
+    effect: ask
 
   # <!-- preencher: acrescente aqui os caminhos sensíveis deste projeto, por exemplo
   #      migrações já aplicadas em produção, chaves de configuração ou contratos externos. -->
