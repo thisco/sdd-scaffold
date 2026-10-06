@@ -14,7 +14,53 @@
       "Write(docs/constituicao/**)",
       "Write(Arquitetura/mapa.yml)",
       "Bash(sed -i:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(*>*AGENTS.md*)",
+      "Bash(cp *AGENTS.md*)",
+      "Bash(mv *AGENTS.md*)",
+      "Bash(*>*CLAUDE.md*)",
+      "Bash(cp *CLAUDE.md*)",
+      "Bash(mv *CLAUDE.md*)",
+      "Bash(*>*GEMINI.md*)",
+      "Bash(cp *GEMINI.md*)",
+      "Bash(mv *GEMINI.md*)",
+      "Bash(*>*docs/adr/*)",
+      "Bash(cp *docs/adr/*)",
+      "Bash(mv *docs/adr/*)",
+      "Bash(*>*docs/constituicao/*)",
+      "Bash(cp *docs/constituicao/*)",
+      "Bash(mv *docs/constituicao/*)",
+      "Bash(*>*Arquitetura/mapa.yml*)",
+      "Bash(cp *Arquitetura/mapa.yml*)",
+      "Bash(mv *Arquitetura/mapa.yml*)",
+      "Bash(*>*Arquitetura/*.drawio*)",
+      "Bash(cp *Arquitetura/*.drawio*)",
+      "Bash(mv *Arquitetura/*.drawio*)",
+      "Bash(*>*.claude/settings*)",
+      "Bash(cp *.claude/settings*)",
+      "Bash(mv *.claude/settings*)",
+      "Bash(*>*.kiro/permissions.yaml*)",
+      "Bash(cp *.kiro/permissions.yaml*)",
+      "Bash(mv *.kiro/permissions.yaml*)",
+      "Bash(*>*scripts/proteger_governanca.py*)",
+      "Bash(cp *scripts/proteger_governanca.py*)",
+      "Bash(mv *scripts/proteger_governanca.py*)",
+      "Bash(*>*scripts/verificar_*)",
+      "Bash(cp *scripts/verificar_*)",
+      "Bash(mv *scripts/verificar_*)",
+      "Bash(*>*.github/*)",
+      "Bash(cp *.github/*)",
+      "Bash(mv *.github/*)",
+      "Bash(*>*.codex/config.toml*)",
+      "Bash(cp *.codex/config.toml*)",
+      "Bash(mv *.codex/config.toml*)",
+      "Bash(git checkout *--*)",
+      "Bash(git restore:*)",
+      "Bash(git apply:*)",
+      "Bash(perl -i:*)",
+      "Bash(perl -pi:*)",
+      "Bash(python -c:*)",
+      "Bash(python3 -c:*)"
     ],
     "deny": [
       "Edit(.claude/settings.json)",
@@ -38,7 +84,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/proteger_governanca.py\""
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/proteger_governanca.py\" || { echo \"hook de governança falhou ou não existe; escrita bloqueada\" >&2; exit 2; }"
           }
         ]
       }
