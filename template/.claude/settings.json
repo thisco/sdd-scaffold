@@ -7,12 +7,16 @@
       "Edit(docs/adr/**)",
       "Edit(docs/constituicao/**)",
       "Edit(Arquitetura/mapa.yml)",
+      "Edit(Arquitetura/*.drawio)",
+      "Edit(.codex/config.toml)",
       "Write(AGENTS.md)",
       "Write(CLAUDE.md)",
       "Write(GEMINI.md)",
       "Write(docs/adr/**)",
       "Write(docs/constituicao/**)",
       "Write(Arquitetura/mapa.yml)",
+      "Write(Arquitetura/*.drawio)",
+      "Write(.codex/config.toml)",
       "Bash(sed -i:*)",
       "Bash(tee:*)",
       "Bash(*>*AGENTS.md*)",
@@ -84,7 +88,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/proteger_governanca.py\" || { echo \"hook de governança falhou ou não existe; escrita bloqueada\" >&2; exit 2; }"
+            "command": "python3 -I \"$CLAUDE_PROJECT_DIR/scripts/proteger_governanca.py\" || { echo \"hook de governança falhou ou não existe; escrita bloqueada\" >&2; exit 2; }"
           }
         ]
       }
