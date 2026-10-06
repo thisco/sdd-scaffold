@@ -19,12 +19,28 @@ Correções de governança. A revisão de segurança automática da 1.7.0 aponto
 - **`Write` sem regra.** Toda regra `ask` ou `deny` de `Edit(...)` ganha o `Write(...)` equivalente.
 - **Caixa do nome.** O hook compara sem distinguir maiúsculas (`agents.md` é o `AGENTS.md` em
   macOS e Windows).
+- **Kiro com menos cobertura que o Claude Code.** O `.kiro/permissions.yaml` deixava livres o
+  `.claude/settings.json`, o `.claude/settings.local.json`, o próprio `permissions.yaml`, o
+  `proteger_governanca.py`, os `scripts/verificar_*.py` e `.github/**` (só `workflows` era
+  negado), e não pedia aprovação para `.codex/config.toml`. Agora nega e pede o mesmo que o
+  settings e o hook.
+- **Escrita por `Bash` em caminho protegido.** O hook só vê `Edit`/`Write`. O settings ganha
+  regras `ask` de `Bash` para redirecionamento (`>`, `>>`), `cp` e `mv` sobre cada caminho
+  protegido, mais `git checkout ... -- arquivo`, `git restore`, `git apply`, `perl -i`,
+  `python -c` e `python3 -c`. Uso normal (`cat`, `git diff`, `mv` de código, `git checkout -b`)
+  não pergunta.
+- **O hook agora falha fechado.** Entrada ilegível ou ferramenta de escrita sem caminho
+  (inclui `notebook_path`) vira `ask`, e não permissão tácita. O comando registrado termina em
+  `|| exit 2`, então script quebrado ou apagado bloqueia a escrita em vez de liberá-la.
 
 ### Modificado
 
 - O README declara o limite da trava de PR (o job roda o script do próprio PR, então ela vale
   contra descuido e não contra má-fé) e as mitigações: CODEOWNERS e proteção de branch em
   `scripts/` e `.github/`, ou rodar o script da base.
+- O README ganha "Limite dos controles por ferramenta": o indireto (heredoc, `python3 script.py`,
+  `make`) não é coberto pelas regras de `Bash`, o Kiro cobre só `fs.write`, `ask` não protege em
+  modo sem confirmação, e a proteção contra má-fé tem de ficar fora do repositório.
 
 ## [1.7.0] - 2026-10-05
 
