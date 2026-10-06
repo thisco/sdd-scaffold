@@ -33,6 +33,14 @@ Correções de governança. A revisão de segurança automática da 1.7.0 aponto
   (inclui `notebook_path`) vira `ask`, e não permissão tácita. O comando registrado termina em
   `|| exit 2`, então script quebrado ou apagado bloqueia a escrita em vez de liberá-la.
 
+- **Módulo plantado em `scripts/` sequestrava o hook e os verificadores.** `python3 scripts/x.py`
+  põe `scripts/` no início do `sys.path`: um `scripts/json.py` silenciava o hook sem editar
+  nenhum arquivo protegido. O hook e os três jobs do CI que rodam script passam a usar
+  `python3 -I` (modo isolado).
+- **Três listas de protegidos, uma paridade.** O `settings.json` não cobria `Arquitetura/*.drawio`
+  nem `.codex/config.toml`, que o hook e o Kiro cobriam. Agora as listas do hook, do settings e do
+  Kiro são iguais, e um teste confere a igualdade.
+
 ### Modificado
 
 - O README declara o limite da trava de PR (o job roda o script do próprio PR, então ela vale
@@ -40,7 +48,9 @@ Correções de governança. A revisão de segurança automática da 1.7.0 aponto
   `scripts/` e `.github/`, ou rodar o script da base.
 - O README ganha "Limite dos controles por ferramenta": o indireto (heredoc, `python3 script.py`,
   `make`) não é coberto pelas regras de `Bash`, o Kiro cobre só `fs.write`, `ask` não protege em
-  modo sem confirmação, e a proteção contra má-fé tem de ficar fora do repositório.
+  modo sem confirmação, e a proteção contra má-fé tem de ficar fora do repositório. Também registra que `conftest.py`,
+  `pyproject.toml`, `requirements*.txt`, `Makefile` e `tests/` executam código no CI e não são
+  protegidos, por serem trabalho normal do agente.
 
 ## [1.7.0] - 2026-10-05
 
