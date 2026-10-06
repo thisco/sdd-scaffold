@@ -19,7 +19,7 @@ jobs:
       - run: pip install pyyaml
       - name: Verificar sincronia drawio x tofu x compose
         run: |
-          SAIDA=$(python3 scripts/verificar_drift_arquitetura.py --raiz .)
+          SAIDA=$(python3 -I scripts/verificar_drift_arquitetura.py --raiz .)
           echo "$SAIDA"
           if echo "$SAIDA" | grep -q "divergência"; then
             echo "::warning title=Drift de Arquitetura::${SAIDA//$'\n'/ | }"
@@ -83,7 +83,7 @@ jobs:
       # A constituição é compartilhada entre projetos e não se edita por projeto. O bloco
       # inline no AGENTS.md precisa bater com a cópia canônica em docs/constituicao/.
       - name: Constituição não adulterada
-        run: python3 scripts/verificar_constituicao.py --raiz .
+        run: python3 -I scripts/verificar_constituicao.py --raiz .
       # AGENTS.md é a fonte única; os ponteiros de ferramenta precisam apontar para ele.
       - name: Ponteiros de ferramenta íntegros
         run: |
@@ -113,7 +113,7 @@ jobs:
       # Threat-model, rollback e evidência saem como aviso: envolvem julgamento,
       # e portão que reprova por julgamento ensina o time a contorná-lo.
       - name: Verificar normas contra a base do PR
-        run: python3 scripts/verificar_pr.py --base origin/${{ github.base_ref }}
+        run: python3 -I scripts/verificar_pr.py --base origin/${{ github.base_ref }}
 
   segredos:
     name: Varredura de segredos (gitleaks)

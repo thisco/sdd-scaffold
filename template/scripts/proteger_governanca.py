@@ -11,6 +11,10 @@ A mesma regra existe nas outras duas ferramentas por mecanismo próprio:
 
 O agente escreve código, testes, specs e planos. Ele não reescreve a constituição,
 as decisões já registradas nem o mapa de arquitetura por conta própria.
+
+Limite: o hook só enxerga Edit, Write, NotebookEdit e MultiEdit. Escrita por comando de
+shell passa por regras `ask` de Bash em .claude/settings.json, que cobrem só o padrão direto
+(redirecionamento, cp, mv, interpretador em linha). A proteção é contra descuido, não má-fé.
 """
 from __future__ import annotations
 
@@ -69,35 +73,46 @@ def caminho_protegido(caminho: str) -> str | None:
     return None
 
 
+def perguntar(motivo: str) -> None:
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "ask",
+            "permissionDecisionReason": motivo,
+        }
+    }))
+
+
 def main() -> int:
+    # Falha fechada: entrada que o hook não entende vira pedido de aprovação, e não
+    # permissão tácita. Quem decide é uma pessoa, não um erro de parsing.
     try:
         evento = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
-        return 0  # entrada inesperada nunca deve travar a sessão
-
-    if evento.get("tool_name") not in FERRAMENTAS_DE_ESCRITA:
+        perguntar("O hook de governança não conseguiu ler a chamada da ferramenta; "
+                  "confirme antes de seguir.")
         return 0
 
-    alvo = (evento.get("tool_input") or {}).get("file_path", "")
+    if not isinstance(evento, dict) or evento.get("tool_name") not in FERRAMENTAS_DE_ESCRITA:
+        return 0
+
+    entrada = evento.get("tool_input") or {}
+    alvo = entrada.get("file_path") or entrada.get("notebook_path") or ""
     if not alvo:
+        perguntar("Ferramenta de escrita sem caminho reconhecível; o hook de governança "
+                  "não consegue conferir o alvo. Confirme antes de seguir.")
         return 0
 
     padrao = caminho_protegido(alvo)
     if padrao is None:
         return 0
 
-    print(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "ask",
-            "permissionDecisionReason": (
-                f"{alvo} casa com o padrão protegido '{padrao}'. Este arquivo carrega a "
-                "governança do repositório e não deve ser reescrito pelo agente sem que "
-                "uma pessoa peça. Se a mudança for intencional, aprove; se ela apareceu "
-                "no meio de outra tarefa, é sinal de que a tarefa saiu do escopo."
-            ),
-        }
-    }))
+    perguntar(
+        f"{alvo} casa com o padrão protegido '{padrao}'. Este arquivo carrega a "
+        "governança do repositório e não deve ser reescrito pelo agente sem que "
+        "uma pessoa peça. Se a mudança for intencional, aprove; se ela apareceu "
+        "no meio de outra tarefa, é sinal de que a tarefa saiu do escopo."
+    )
     return 0
 
 
