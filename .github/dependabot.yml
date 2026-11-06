@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # Mantém as actions fixadas por SHA atualizadas; espera 7 dias por versão nova.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
